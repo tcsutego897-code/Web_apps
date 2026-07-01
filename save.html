@@ -1,0 +1,42 @@
+
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<title>ページタイトル</title>
+	<style>
+		/* CSSを書くところ */
+		h1 {
+			color: blue;
+		}
+	</style>
+</head>
+
+<body>
+	<!-- 実際に表示される領域 -->
+	<h1>メモメモ</h1>
+	<script>
+		// JavaScriptを書くところ
+		console.log("JavaScript");
+	</script>
+
+    <input id="input">
+    <button onclick="clicked();">なんか打ってね</button>
+    <div id="output"></div>
+
+    <script>
+        function clicked() {
+            const input = document.getElementById("input");
+            const output = document.getElementById("output");
+            output.innerHTML = `<b>${input.value}</b>`;
+        }
+    </script>
+
+</body>
+
+</html>
+#下調べをよくしよう
+#無料でできる範囲の制限をを理解しよう
