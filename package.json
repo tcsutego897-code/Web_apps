@@ -1,0 +1,21 @@
+{
+  
+  "name": "memo-kun",
+  "version": "1.0.0",
+  "description": "短い文章をメモできるサイトです！",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npx serve -l $PORT"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tcsutego897-code/Web_apps.git"
+  },
+  "keywords": [
+    "memo"
+  ],
+  "author": "satou",
+  "license": "MIT"
+}
+
