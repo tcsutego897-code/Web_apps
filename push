@@ -1,3 +1,12 @@
 git add .
-git commit -m "Fix: Nuke all node files and old index.html"
-git push origin main
+git commit -m "Fix: Nuke all node files and old index.html
+git push origin tsuda
+
+# 1. すべての変更（名前変更や削除）をGitに登録する
+git add .
+
+# 2. メッセージをつけて保存する
+git commit -m "Fix: Clear node files and confirm php extension"
+
+# 3. GitHubに送信する
+git push origin tsuda

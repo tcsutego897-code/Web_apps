@@ -20,7 +20,11 @@
         <!-- クリックするとデータが送信されるボタン -->
         <button type="submit">登録する</button>
     </form>
-    <label for="Search">検索:</label>
-    
+    <!-- 検索フォーム -->
+    <form method="GET" action="search.php">
+        <input type="text" name="keyword" placeholder="名前やメールで検索" value="<?= htmlspecialchars($_GET['keyword'] ?? '') ?>">
+        <button type="submit">検索する</button>
+        <a href="search.php">全件表示・リセット</a>
+    </form>
 </body>
 </html>
