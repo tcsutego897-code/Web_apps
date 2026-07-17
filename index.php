@@ -20,5 +20,7 @@
         <!-- クリックするとデータが送信されるボタン -->
         <button type="submit">登録する</button>
     </form>
+    <label for="Search">検索:</label>
+    
 </body>
 </html>
