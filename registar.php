@@ -18,7 +18,6 @@
         ]);
     }
 }
-
 // 登録が終わったら自動で一覧ページにジャンプする
 header('Location: list.php');
 exit;
