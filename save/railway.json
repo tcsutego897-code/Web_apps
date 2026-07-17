@@ -1,0 +1,5 @@
+{
+  "deployments": {
+    "start": "npm start"
+  }
+}
