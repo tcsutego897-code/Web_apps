@@ -1,4 +1,5 @@
-setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+{
+    {setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
         // テーブルがなければ自動作成
         $db->exec('CREATE TABLE IF NOT EXISTS users (
