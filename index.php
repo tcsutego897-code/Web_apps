@@ -10,18 +10,18 @@
     <div class="nav">
         <a href="list.php">登録済みデータ一覧を見る</a>
     </div>
-    <!-- データをサーバーに送信するためのフォーム（送信先を修正しました） -->
-    <form action="register.php" method="POST">
+    <form action="register.php" method="POST" enctype="multipart/form-data">
         <label for="user_name">名前:</label>
         <input type="text" id="user_name" name="name" required>
         <br>
         <label for="user_email">メール:</label>
         <input type="email" id="user_email" name="email" required>
         <br>
-        <!-- クリックするとデータが送信されるボタン -->
+        <label for="user_image">画像:</label>
+        <input type="file" id="user_image" name="image" accept="image/*">
+        <br>
         <button type="submit">登録する</button>
     </form>
-    <!-- 検索フォーム -->
     <form method="GET" action="search.php">
         <input type="text" name="keyword" placeholder="名前やメールで検索" value="<?= htmlspecialchars($_GET['keyword'] ?? '') ?>">
         <button type="submit">検索する</button>
