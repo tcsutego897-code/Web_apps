@@ -1,4 +1,6 @@
-#inputForm{
-   color: red;
-   background-color: rgb(234, 220, 177);
+@charset "UTF-8";
+/* ここからCSSコードを記述 *
+p{
+   color: yellow;
+   font-size:35px;
 }
