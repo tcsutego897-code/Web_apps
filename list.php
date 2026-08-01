@@ -32,18 +32,23 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <title>登録データ一覧</title>
     <style>
-        table { border-collapse: collapse; width: 90%; margin: 20px 0; }
+        table { border-collapse: collapse; width: 95%; margin: 20px 0; }
         th, td { border: 1px solid #ccc; padding: 10px; text-align: left; vertical-align: top; }
         th { background-color: #f4f4f4; }
         .no-data { margin-top: 20px; color: #555; }
-        .nav { margin-top: 20px; }
+        .nav { margin-top: 20px; margin-bottom: 16px; }
         img { max-width: 180px; height: auto; display: block; }
+        .actions a { margin-right: 8px; }
     </style>
 </head>
 <body>
     <h1>登録ユーザー一覧</h1>
     <div class="nav">
         <a href="index.php">新しいデータを追加する</a>
+        <span> | </span>
+        <a href="export.php?format=csv">CSVで出力</a>
+        <span> | </span>
+        <a href="export.php?format=excel">Excel形式で出力</a>
     </div>
     <?php if (empty($users)): ?>
         <p class="no-data">まだ登録データがありません。</p>
@@ -54,6 +59,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <th>名前</th>
                 <th>メールアドレス</th>
                 <th>画像</th>
+                <th>操作</th>
             </tr>
             <?php foreach ($users as $user): ?>
                 <tr>
@@ -66,6 +72,9 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php else: ?>
                             なし
                         <?php endif; ?>
+                    </td>
+                    <td class="actions">
+                        <a href="edit.php?id=<?php echo (int)$user['id']; ?>">編集</a>
                     </td>
                 </tr>
             <?php endforeach; ?>
