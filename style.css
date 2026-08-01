@@ -1,6 +1,6 @@
 @charset "UTF-8";
 /* ここからCSSコードを記述 */
-p{
+h1,div,label,input,br,form{
    color: yellow;
    font-size:35px;
 }
