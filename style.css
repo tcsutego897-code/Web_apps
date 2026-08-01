@@ -4,3 +4,12 @@ h1{
    color: yellow;
    font-size:35px;
 }
+
+h2{
+   color:aqua;
+   
+}
+
+body {
+  background-color: hsl(91, 96%, 35%);
+}
