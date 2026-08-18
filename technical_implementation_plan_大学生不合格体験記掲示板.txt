@@ -1,0 +1,451 @@
+技術的実装段階計画書：大学生向けの不合格体験記掲示板
+
+1. 目的
+本書は、前提となる仕様書をもとに、実際のWebアプリケーションとして実装するための技術計画を定義したものです。
+本サービスは、大学生向けの不合格体験記を投稿・閲覧・共感・改善点共有できる掲示板型アプリとして開発することを目的とします。
+
+2. 開発方針
+- 技術要件はシンプルかつ実装しやすい構成を採用する
+- 初期開発ではMVP中心に構築し、徐々に機能を拡張する
+- SQLiteを利用してローカル開発とデプロイの簡易化を図る
+- フロントはHTML/CSS/JavaScript、バックエンドはPython Flaskを前提とする
+- 投稿・一覧・詳細・コメント・いいね・管理機能を最優先で実装する
+
+3. 技術スタック
+3-1 フロントエンド
+- HTML5
+- CSS3
+- JavaScript
+- BootstrapまたはCSSのみの簡易UI
+
+3-2 バックエンド
+- Python 3.11以上
+- Flask
+- SQLite3
+
+3-3 追加ライブラリ
+- Werkzeug（Flask標準）
+- Flask-Login（ログイン実装時）
+- datetime, hashlib, os, re
+- 画像保存時は Pillowまたは標準ファイル保存方式
+
+3-4 開発環境
+- VS Code
+- SQLite Browserまたは sqlite3 CLI
+- Git
+- Python仮想環境
+
+4. システム構成
+- ユーザーがブラウザでアクセス
+- FlaskアプリがHTTPリクエストを受ける
+- SQLiteデータベースに投稿・ユーザー・コメントなどを保存
+- 画像ファイルは uploads/ フォルダに保存
+- テンプレートは templates/ に配置
+- CSS/JSは static/ に配置
+
+5. ディレクトリ構成案
+project/
+├─ app.py
+├─ database.py
+├─ models.py
+├─ routes/
+│  ├─ auth.py
+│  ├─ posts.py
+│  ├─ comments.py
+│  ├─ admin.py
+├─ templates/
+│  ├─ index.html
+│  ├─ post_list.html
+│  ├─ post_detail.html
+│  ├─ post_form.html
+│  ├─ login.html
+│  ├─ mypage.html
+│  └─ admin.html
+├─ static/
+│  ├─ css/style.css
+│  └─ js/app.js
+├─ uploads/
+├─ data.sqlite
+├─ requirements.txt
+└─ README.md
+
+6. データベース設計
+6-1 usersテーブル
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    university TEXT,
+    department TEXT,
+    grade TEXT,
+    role TEXT DEFAULT 'user',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+6-2 postsテーブル
+CREATE TABLE posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    category TEXT NOT NULL,
+    school_year TEXT,
+    department TEXT,
+    failure_type TEXT,
+    cause TEXT,
+    reflection TEXT,
+    improvement_habit TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_deleted INTEGER DEFAULT 0,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
+6-3 commentsテーブル
+CREATE TABLE comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(post_id) REFERENCES posts(id),
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
+6-4 likesテーブル
+CREATE TABLE likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, user_id),
+    FOREIGN KEY(post_id) REFERENCES posts(id),
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
+6-5 reportsテーブル
+CREATE TABLE reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER,
+    user_id INTEGER,
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status TEXT DEFAULT 'pending'
+);
+
+6-6 tagsテーブル
+CREATE TABLE tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL
+);
+
+6-7 post_tagsテーブル
+CREATE TABLE post_tags (
+    post_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    PRIMARY KEY(post_id, tag_id),
+    FOREIGN KEY(post_id) REFERENCES posts(id),
+    FOREIGN KEY(tag_id) REFERENCES tags(id)
+);
+
+7. 実装フェーズ
+7-1 フェーズ1：プロジェクト基盤構築
+- Python仮想環境作成
+- Flaskインストール
+- ディレクトリ作成
+- SQLiteデータベースの初期化
+- app.py の雛形作成
+- requirements.txt 作成
+
+実装対象
+- アプリ起動
+- ベースHTMLの表示
+- DB接続確認
+- サンプルページの確認
+
+7-2 フェーズ2：トップページと一覧表示
+- ホーム画面作成
+- 投稿一覧の取得
+- 新着順表示
+- いいね数表示
+- コメント数表示
+- キーワード検索の導入
+
+実装対象
+- / (index)
+- /posts
+- テンプレート index.html, post_list.html
+
+7-3 フェーズ3：投稿作成機能
+- 投稿フォーム作成
+- フォーム入力値のバリデーション
+- 投稿内容保存
+- title, content, category などの保存
+- 匿名投稿対応
+
+実装対象
+- /posts/new
+- POST /posts
+- postsテーブルへのINSERT
+
+7-4 フェーズ4：投稿詳細ページ
+- 投稿内容の表示
+- 投稿者情報表示
+- カテゴリ表示
+- コメント一覧表示
+- いいね数の表示
+
+実装対象
+- /posts/<id>
+- post_detail.html
+
+7-5 フェーズ5：コメント機能
+- コメント追加フォーム
+- コメント保存
+- コメント一覧表示
+- 投稿詳細ページに埋め込み
+
+実装対象
+- POST /posts/<id>/comments
+- commentsテーブル
+
+7-6 フェーズ6：いいね機能
+- いいねの追加/取り消し
+- 1ユーザー1投稿1いいね制限
+- いいね数の集計
+
+実装対象
+- POST /posts/<id>/like
+- likesテーブル
+
+7-7 フェーズ7：ユーザー認証
+- ユーザー登録
+- ログイン
+- ログアウト
+- セッション管理
+- 投稿者情報との紐付け
+
+実装対象
+- /register
+- /login
+- /logout
+- Flask-Loginまたはセッションベース
+
+7-8 フェーズ8：マイページと投稿管理
+- 自分の投稿一覧
+- いいねした投稿一覧
+- 自分のコメント一覧
+- 編集機能
+- 削除機能
+
+実装対象
+- /mypage
+- /posts/<id>/edit
+- /posts/<id>/delete
+
+7-9 フェーズ9：通報・管理機能
+- 通報フォーム
+- reportsテーブルへの保存
+- 管理者画面
+- 通報一覧と削除
+
+実装対象
+- /reports
+- /admin
+
+7-10 フェーズ10：画像アップロード
+- 画像ファイルの保存
+- ファイル名の安全化
+- jpg/png/gifのみ許可
+- uploadsディレクトリに保存
+
+実装対象
+- post_form.html
+- upload処理ルーティング
+
+8. ルーティング設計
+以下は基本ルーティング案です。
+
+GET /
+- トップページ表示
+
+GET /posts
+- 投稿一覧表示
+
+GET /posts/new
+- 投稿フォーム表示
+
+POST /posts
+- 投稿保存
+
+GET /posts/<id>
+- 投稿詳細表示
+
+POST /posts/<id>/comments
+- コメント作成
+
+POST /posts/<id>/like
+- いいね追加/削除
+
+GET /register
+- 新規登録画面
+
+POST /register
+- ユーザー登録
+
+GET /login
+- ログイン画面
+
+POST /login
+- ログイン処理
+
+GET /logout
+- ログアウト
+
+GET /mypage
+- 個人ページ表示
+
+GET /admin
+- 管理者画面
+
+POST /admin/report
+- 通報処理
+
+9. 画面実装方針
+9-1 トップページ
+- 見出し
+- 主要な体験談カード
+- サイト説明
+- CTAボタン
+
+9-2 一覧ページ
+- 投稿カード型レイアウト
+- タイトル
+- 学年
+- カテゴリ
+- 日付
+- いいね数
+- コメント数
+- 詳細リンク
+
+9-3 詳細ページ
+- タイトルとカテゴリ
+- 内容を段落で表示
+- 原因・改善方法の見出しを見やすく表示
+- コメント入力欄
+
+9-4 投稿フォーム
+- タイトル入力
+- 内容入力
+- 学年選択
+- カテゴリ選択
+- アンケート項目の入力
+- 匿名設定
+- 画像アップロード
+
+10. バリデーション方針
+- タイトルは必須、長さ制限あり
+- 本文は必須、最低文字数を設定
+- メールアドレス形式チェック
+- ニックネーム長さ制限
+- 不適切な表現の検出（簡易的な禁止語リスト）
+- 画像拡張子とサイズチェック
+
+11. セキュリティ対策
+- SQLインジェクション対策: sqlite3 paramを使用
+- XSS対策: HTMLエスケープ
+- CSRF対策: フォームトークンの導入
+- パスワードハッシュ化: sha256またはwerkzeug.security.generate_password_hash
+- 画像ファイルのパス制御
+- 管理者ページのアクセス制限
+
+12. テスト計画
+12-1 単体テスト
+- ユーザー登録処理
+- ログイン処理
+- 投稿保存
+- コメント保存
+- いいね保存
+- 通報処理
+
+12-2 統合テスト
+- 投稿一覧が表示される
+- 投稿詳細が表示される
+- コメントが反映される
+- いいねが反映される
+- 管理者が投稿を削除できる
+
+12-3 手動確認
+- モバイル表示確認
+- 長文投稿の表示確認
+- 画像アップロード確認
+- エラー時のメッセージ確認
+
+13. デプロイ方針
+- 初期段階ではRenderまたはHeroku風の簡易デプロイ
+- SQLiteファイルを永続化可能なボリュームとして管理
+- 本番環境では環境変数でSECRET_KEYやDB_PATHを管理
+
+14. 開発優先順位
+優先度A（最初に必要）
+- 投稿一覧
+- 投稿作成
+- 投稿詳細
+- コメント
+- いいね
+- 基本UI
+
+優先度B（次に必要）
+- ログイン
+- マイページ
+- 管理者ページ
+- 通報
+
+優先度C（拡張機能）
+- 画像アップロード
+- タグ機能
+- 通知機能
+- ランキング
+- 多言語対応
+
+15. 実装スケジュール案
+フェーズ1: 1〜2日
+- 環境構築、DB設計、画面雛形作成
+
+フェーズ2: 3〜5日
+- 投稿一覧、投稿詳細、投稿作成
+
+フェーズ3: 3日
+- コメント、いいね、検索
+
+フェーズ4: 3〜4日
+- 認証、マイページ、管理者機能
+
+フェーズ5: 2〜3日
+- 画像アップロード、UX調整、デプロイ
+
+16. リスクと対策
+16-1 リスク: 投稿本文の改ざん
+対策: バリデーション、HTMLエスケープ、管理者削除
+
+16-2 リスク: 匿名投稿による荒らし
+対策: 禁止語フィルタ、通報機能、管理者制御
+
+16-3 リスク: 画像アップロードの脆弱性
+対策: ファイル拡張子制限、保存先制限、サイズ制限
+
+16-4 リスク: 画面が見づらい
+対策: 余白確保、見出し整理、カード型レイアウト、モバイル優先設計
+
+17. まとめ
+本アプリの技術実装は、MVPを最小構成で着実に進めることで開発リスクを下げることができます。
+最優先で実装すべきは、投稿・詳細・コメント・いいね・検索・基礎認証機能です。
+また、大学生向けの安心感があるUIと、失敗談に対する共感を生みやすい設計を重視して実装することが重要です。
+
+次の段階としては、
+1. データベース作成SQLの完全版
+2. Flaskの実装雛形
+3. 各HTMLテンプレートの骨組み
+4. 各機能のルーティング詳細
+まで具体化して実装に進めます。
