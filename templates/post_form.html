@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>体験談投稿</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>不合格体験記の投稿</h1>
+    <div class="nav">
+        <a href="/">一覧へ戻る</a>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="/posts">
+        <label>タイトル</label>
+        <input type="text" name="title" required>
+
+        <label>カテゴリ</label>
+        <input type="text" name="category" required>
+
+        <label>投稿者名</label>
+        <input type="text" name="author" required>
+
+        <label>体験内容</label>
+        <textarea name="content" rows="8" required></textarea>
+
+        <label>なぜ落ちたか</label>
+        <textarea name="cause" rows="4"></textarea>
+
+        <label>反省点</label>
+        <textarea name="reflection" rows="4"></textarea>
+
+        <label>改善策</label>
+        <textarea name="improvement_habit" rows="4"></textarea>
+
+        <button type="submit">投稿する</button>
+    </form>
+</body>
+</html>

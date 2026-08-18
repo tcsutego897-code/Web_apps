@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ post['title'] }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>{{ post['title'] }}</h1>
+    <div class="nav">
+        <a href="/">一覧へ戻る</a>
+    </div>
+
+    <div class="post-card">
+        <p><strong>カテゴリ:</strong> {{ post['category'] }}</p>
+        <p><strong>投稿者:</strong> {{ post['author'] }}</p>
+        <p><strong>投稿日:</strong> {{ post['created_at'] }}</p>
+        <p><strong>本文:</strong><br>{{ post['content']|replace('\n', '<br>')|safe }}</p>
+        {% if post['cause'] %}
+            <p><strong>原因:</strong><br>{{ post['cause']|replace('\n', '<br>')|safe }}</p>
+        {% endif %}
+        {% if post['reflection'] %}
+            <p><strong>反省点:</strong><br>{{ post['reflection']|replace('\n', '<br>')|safe }}</p>
+        {% endif %}
+        {% if post['improvement_habit'] %}
+            <p><strong>改善策:</strong><br>{{ post['improvement_habit']|replace('\n', '<br>')|safe }}</p>
+        {% endif %}
+
+        <form method="POST" action="/posts/{{ post['id'] }}/like">
+            <button type="submit">いいね ({{ like_count }})</button>
+        </form>
+    </div>
+
+    <h2>コメント</h2>
+    <form method="POST" action="/posts/{{ post['id'] }}/comments">
+        <label>名前</label>
+        <input type="text" name="author" required>
+        <label>コメント</label>
+        <textarea name="content" rows="4" required></textarea>
+        <button type="submit">コメントする</button>
+    </form>
+
+    {% if comments %}
+        {% for comment in comments %}
+            <div class="comment-box">
+                <strong>{{ comment['author'] }}</strong>
+                <p>{{ comment['content'] }}</p>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>まだコメントはありません。</p>
+    {% endif %}
+</body>
+</html>

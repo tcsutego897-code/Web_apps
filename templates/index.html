@@ -2,30 +2,36 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="/static/style.css"/>
-    <title>データベース登録アプリ</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <title>大学生向け不合格体験記掲示板</title>
 </head>
 <body>
-    <h1>新しいデータの追加</h1>
+    <h1>大学生向け不合格体験記掲示板</h1>
     <div class="nav">
-        <a href="/list">登録済みデータ一覧を見る</a>
+        <a href="/posts/new">新規投稿</a>
     </div>
-    <form action="/register" method="POST" enctype="multipart/form-data">
-        <label for="user_name">名前:</label>
-        <input type="text" id="user_name" name="name" required>
-        <br>
-        <label for="user_email">メール:</label>
-        <input type="email" id="user_email" name="email" required>
-        <br>
-        <label for="user_image">画像:</label>
-        <input type="file" id="user_image" name="image" accept="image/*">
-        <br>
-        <button type="submit">登録する</button>
-    </form>
-    <form method="GET" action="/search">
-        <input type="text" name="keyword" placeholder="名前やメールで検索" value="{{ keyword|e }}">
-        <button type="submit">検索する</button>
-        <a href="/search">全件表示・リセット</a>
-    </form>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    {% if posts %}
+        {% for post in posts %}
+            <article class="post-summary">
+                <h2><a href="/posts/{{ post['id'] }}">{{ post['title'] }}</a></h2>
+                <p><strong>カテゴリ:</strong> {{ post['category'] }} / <strong>投稿者:</strong> {{ post['author'] }}</p>
+                <p>{{ post['content'][:80] }}{% if post['content']|length > 80 %}...{% endif %}</p>
+                <p><small>コメント {{ post['comment_count'] }} / いいね {{ post['like_count'] }}</small></p>
+            </article>
+        {% endfor %}
+    {% else %}
+        <p>まだ投稿がありません。最初の体験談を投稿してみましょう。</p>
+    {% endif %}
 </body>
 </html>
