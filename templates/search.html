@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>検索結果</title>
+    <link rel="stylesheet" href="/static/style.css"/>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        ul { list-style: none; padding: 0; }
+        li { margin-bottom: 12px; }
+        img { max-width: 160px; margin-top: 6px; display: block; }
+    </style>
+</head>
+<body>
+    <h1>検索結果</h1>
+    <p><a href="/">戻る</a></p>
+    <ul>
+        {% for user in users %}
+            <li>
+                <strong>{{ user['name']|e }}</strong> ({{ user['email']|e }})
+                {% if user['image_path'] %}
+                    <br>
+                    <img src="/{{ user['image_path'] }}" alt="アップロード画像">
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

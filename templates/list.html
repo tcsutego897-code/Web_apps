@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>登録データ一覧</title>
+    <link rel="stylesheet" href="/static/style.css"/>
+    <style>
+        table { border-collapse: collapse; width: 95%; margin: 20px 0; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; vertical-align: top; }
+        th { background-color: #f4f4f4; }
+        .no-data { margin-top: 20px; color: #555; }
+        .nav { margin-top: 20px; margin-bottom: 16px; }
+        img { max-width: 180px; height: auto; display: block; }
+        .actions a { margin-right: 8px; }
+    </style>
+</head>
+<body>
+    <h1>登録ユーザー一覧</h1>
+    <div class="nav">
+        <a href="/">新しいデータを追加する</a>
+        <span> | </span>
+        <a href="/export?format=csv">CSVで出力</a>
+        <span> | </span>
+        <a href="/export?format=excel">Excel形式で出力</a>
+    </div>
+    {% if not users %}
+        <p class="no-data">まだ登録データがありません。</p>
+    {% else %}
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>名前</th>
+                <th>メールアドレス</th>
+                <th>画像</th>
+                <th>操作</th>
+            </tr>
+            {% for user in users %}
+                <tr>
+                    <td>{{ user['id'] }}</td>
+                    <td>{{ user['name']|e }}</td>
+                    <td>{{ user['email']|e }}</td>
+                    <td>
+                        {% if user['image_path'] %}
+                            <img src="/{{ user['image_path'] }}" alt="アップロード画像">
+                        {% else %}
+                            なし
+                        {% endif %}
+                    </td>
+                    <td class="actions">
+                        <a href="/edit?id={{ user['id'] }}">編集</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+</body>
+</html>

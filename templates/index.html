@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css"/>
+    <title>データベース登録アプリ</title>
+</head>
+<body>
+    <h1>新しいデータの追加</h1>
+    <div class="nav">
+        <a href="/list">登録済みデータ一覧を見る</a>
+    </div>
+    <form action="/register" method="POST" enctype="multipart/form-data">
+        <label for="user_name">名前:</label>
+        <input type="text" id="user_name" name="name" required>
+        <br>
+        <label for="user_email">メール:</label>
+        <input type="email" id="user_email" name="email" required>
+        <br>
+        <label for="user_image">画像:</label>
+        <input type="file" id="user_image" name="image" accept="image/*">
+        <br>
+        <button type="submit">登録する</button>
+    </form>
+    <form method="GET" action="/search">
+        <input type="text" name="keyword" placeholder="名前やメールで検索" value="{{ keyword|e }}">
+        <button type="submit">検索する</button>
+        <a href="/search">全件表示・リセット</a>
+    </form>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>データ編集</title>
+    <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+    <h1>登録データの編集</h1>
+    <form action="/edit" method="POST">
+        <input type="hidden" name="id" value="{{ user['id'] }}">
+        <label>名前: <input type="text" name="name" value="{{ user['name']|e }}" required></label><br>
+        <label>メール: <input type="email" name="email" value="{{ user['email']|e }}" required></label><br>
+        <button type="submit">更新する</button>
+    </form>
+    <p><a href="/list">一覧に戻る</a></p>
+</body>
+</html>
