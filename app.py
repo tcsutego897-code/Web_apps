@@ -20,6 +20,7 @@ def get_db():
     else:
         conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys = ON')
     return conn
 
 
@@ -27,37 +28,149 @@ def init_db():
     conn = get_db()
     conn.execute(
         '''
-        CREATE TABLE IF NOT EXISTS posts (
+        CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            category TEXT NOT NULL,
-            author TEXT NOT NULL,
-            content TEXT NOT NULL,
-            cause TEXT,
-            reflection TEXT,
-            improvement_habit TEXT,
+            nickname TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT,
+            university TEXT,
+            department TEXT,
+            grade TEXT,
+            role TEXT NOT NULL DEFAULT 'user',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
         '''
     )
+    user_columns = {row['name'] for row in conn.execute('PRAGMA table_info(users)')}
+    for column, definition in (
+        ('nickname', "TEXT NOT NULL DEFAULT '匿名ユーザー'"),
+        ('password_hash', 'TEXT'),
+        ('university', 'TEXT'),
+        ('department', 'TEXT'),
+        ('grade', 'TEXT'),
+        ('role', "TEXT NOT NULL DEFAULT 'user'"),
+    ):
+        if column not in user_columns:
+            conn.execute(f'ALTER TABLE users ADD COLUMN {column} {definition}')
+
+    conn.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL,
+            author TEXT NOT NULL,
+            content TEXT NOT NULL,
+            school_year TEXT,
+            department TEXT,
+            failure_type TEXT,
+            cause TEXT,
+            reflection TEXT,
+            improvement_habit TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            is_deleted INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        '''
+    )
+    post_columns = {row['name'] for row in conn.execute('PRAGMA table_info(posts)')}
+    for column, definition in (
+        ('user_id', 'INTEGER'),
+        ('school_year', 'TEXT'),
+        ('department', 'TEXT'),
+        ('failure_type', 'TEXT'),
+        ('updated_at', 'TEXT'),
+        ('is_deleted', 'INTEGER NOT NULL DEFAULT 0'),
+    ):
+        if column not in post_columns:
+            conn.execute(f'ALTER TABLE posts ADD COLUMN {column} {definition}')
+    if 'updated_at' not in post_columns:
+        conn.execute('UPDATE posts SET updated_at = created_at WHERE updated_at IS NULL')
+
     conn.execute(
         '''
         CREATE TABLE IF NOT EXISTS comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             post_id INTEGER NOT NULL,
+            user_id INTEGER,
             author TEXT NOT NULL,
             content TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE
+            FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        '''
+    )
+    comment_columns = {row['name'] for row in conn.execute('PRAGMA table_info(comments)')}
+    if 'user_id' not in comment_columns:
+        conn.execute('ALTER TABLE comments ADD COLUMN user_id INTEGER')
+
+    conn.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS likes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(post_id, user_id),
+            FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        '''
+    )
+    like_columns = {row['name'] for row in conn.execute('PRAGMA table_info(likes)')}
+    if 'user_id' not in like_columns:
+        conn.execute('ALTER TABLE likes RENAME TO likes_legacy')
+        conn.execute(
+            '''
+            CREATE TABLE likes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL,
+                user_id INTEGER,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(post_id, user_id),
+                FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            '''
+        )
+        conn.execute(
+            'INSERT INTO likes (id, post_id, created_at) SELECT id, post_id, created_at FROM likes_legacy'
+        )
+        conn.execute('DROP TABLE likes_legacy')
+
+    conn.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER,
+            user_id INTEGER,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            status TEXT NOT NULL DEFAULT 'pending',
+            FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id)
         )
         '''
     )
     conn.execute(
         '''
-        CREATE TABLE IF NOT EXISTS likes (
+        CREATE TABLE IF NOT EXISTS tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            post_id INTEGER NOT NULL UNIQUE,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            name TEXT UNIQUE NOT NULL
+        )
+        '''
+    )
+    conn.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS post_tags (
+            post_id INTEGER NOT NULL,
+            tag_id INTEGER NOT NULL,
+            PRIMARY KEY(post_id, tag_id),
+            FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE,
+            FOREIGN KEY(tag_id) REFERENCES tags(id) ON DELETE CASCADE
         )
         '''
     )
