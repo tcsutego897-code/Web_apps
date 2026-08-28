@@ -15,7 +15,7 @@ class BoardAppTests(unittest.TestCase):
     def test_index_page_loads(self):
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'不合格', response.data)
+        self.assertIn('不合格', response.get_data(as_text=True))
 
     def test_create_post(self):
         response = self.client.post('/posts', data={
@@ -28,7 +28,7 @@ class BoardAppTests(unittest.TestCase):
             'improvement_habit': '1日10分の振り返り',
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'第一志望に落ちた体験', response.data)
+        self.assertIn('第一志望に落ちた体験', response.get_data(as_text=True))
 
     def test_comment_and_like(self):
         self.client.post('/posts', data={

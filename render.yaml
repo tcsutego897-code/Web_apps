@@ -1,7 +1,6 @@
 services:
   - type: web
     name: webapps
-    env: python
-    pythonVersion: "3.12.18"
+    runtime: python
     buildCommand: "bash render_build.sh"
     startCommand: "python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 2"
