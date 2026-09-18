@@ -1,0 +1,19 @@
+{
+  "name": "memo-kun",
+  "version": "1.0.0",
+  "description": "短い文章をメモできるサイトです！",
+  "main": "app.py",
+  "scripts": {
+    "start": "python app.py",
+    "test": "python -m py_compile app.py"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tcsutego897-code/Web_apps.git"
+  },
+  "keywords": [
+    "memo"
+  ],
+  "author": "satou",
+  "license": "MIT"
+}
