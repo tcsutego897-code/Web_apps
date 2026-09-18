@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
-from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+
+from flask import Flask, redirect, request, send_file
 
 
 HOST = "127.0.0.1"
 PORT = 8000
 DATA_FILE = Path(__file__).with_name("data") / "users.json"
+app = Flask(__name__)
 
 
 def page(title: str, body: str) -> str:
@@ -108,58 +109,40 @@ document.getElementById('memo-button').addEventListener('click', function() {
 </script>""")
 
 
-class AppHandler(BaseHTTPRequestHandler):
-    def send_html(self, content: str, status: HTTPStatus = HTTPStatus.OK) -> None:
-        encoded = content.encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
+@app.get("/")
+def index() -> str:
+    return input_page()
 
-    def do_GET(self) -> None:
-        path = urlparse(self.path).path
-        pages = {"/": input_page, "/list": list_page, "/tax": tax_page, "/memo": memo_page}
-        if path == "/style.css":
-            try:
-                content = Path(__file__).with_name("style.css").read_bytes()
-            except OSError:
-                self.send_error(HTTPStatus.NOT_FOUND)
-                return
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/css; charset=utf-8")
-            self.send_header("Content-Length", str(len(content)))
-            self.end_headers()
-            self.wfile.write(content)
-            return
-        if path in pages:
-            self.send_html(pages[path]())
-            return
-        self.send_error(HTTPStatus.NOT_FOUND)
 
-    def do_POST(self) -> None:
-        if urlparse(self.path).path != "/register":
-            self.send_error(HTTPStatus.NOT_FOUND)
-            return
-        length = int(self.headers.get("Content-Length", "0"))
-        fields = parse_qs(self.rfile.read(length).decode("utf-8"), keep_blank_values=True)
-        name = fields.get("name", [""])[0].strip()
-        email = fields.get("email", [""])[0].strip()
-        if not name or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
-            self.send_html(page("入力エラー", '<h1>入力エラー</h1><p>名前と正しいメールアドレスを入力してください。</p>'), HTTPStatus.BAD_REQUEST)
-            return
-        save_user(name, email)
-        self.send_response(HTTPStatus.SEE_OTHER)
-        self.send_header("Location", "/list")
-        self.end_headers()
+@app.get("/list")
+def users() -> str:
+    return list_page()
+
+
+@app.get("/tax")
+def tax() -> str:
+    return tax_page()
+
+
+@app.get("/memo")
+def memo() -> str:
+    return memo_page()
+
+
+@app.get("/style.css")
+def stylesheet():
+    return send_file(Path(__file__).with_name("style.css"), mimetype="text/css")
+
+
+@app.post("/register")
+def register():
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip()
+    if not name or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        return page("入力エラー", '<h1>入力エラー</h1><p>名前と正しいメールアドレスを入力してください。</p>'), 400
+    save_user(name, email)
+    return redirect("/list", code=303)
 
 
 if __name__ == "__main__":
-    server = ThreadingHTTPServer((HOST, PORT), AppHandler)
-    print(f"http://{HOST}:{PORT}/")
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        server.server_close()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", PORT)))
