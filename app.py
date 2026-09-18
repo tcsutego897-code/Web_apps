@@ -61,15 +61,27 @@ def input_page() -> str:
 </form>""")
 
 
-def list_page() -> str:
+def list_page(email_query: str = "") -> str:
+    users = load_users()
+    if email_query:
+        normalized_query = email_query.casefold()
+        users = [
+            user for user in users
+            if normalized_query in str(user.get("email", "")).casefold()
+        ]
     rows = "".join(
         f"<tr><td>{user['id']}</td><td>{html.escape(str(user['name']))}</td>"
         f"<td>{html.escape(str(user['email']))}</td></tr>"
-        for user in load_users()
+        for user in users
     )
     if not rows:
-        rows = '<tr><td colspan="3">登録データはありません。</td></tr>'
+        rows = '<tr><td colspan="3">検索結果がありません。</td></tr>' if email_query else '<tr><td colspan="3">登録データはありません。</td></tr>'
     return page("登録データ一覧", f"""<h1>登録ユーザー一覧</h1>
+<form action="/list" method="get">
+  <label for="email-search">メールアドレス検索:</label>
+  <input type="search" id="email-search" name="email" value="{html.escape(email_query)}">
+  <button type="submit">検索</button>
+</form>
 <table><thead><tr><th>ID</th><th>名前</th><th>メールアドレス</th></tr></thead>
 <tbody>{rows}</tbody></table>""")
 
@@ -116,7 +128,7 @@ def index() -> str:
 
 @app.get("/list")
 def users() -> str:
-    return list_page()
+    return list_page(request.args.get("email", "").strip())
 
 
 @app.get("/tax")
