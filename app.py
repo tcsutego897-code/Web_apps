@@ -61,13 +61,14 @@ def input_page() -> str:
 </form>""")
 
 
-def list_page(email_query: str = "") -> str:
+def list_page(search_query: str = "") -> str:
     users = load_users()
-    if email_query:
-        normalized_query = email_query.casefold()
+    if search_query:
+        normalized_query = search_query.casefold()
         users = [
             user for user in users
-            if normalized_query in str(user.get("email", "")).casefold()
+            if normalized_query in str(user.get("name", "")).casefold()
+            or normalized_query in str(user.get("email", "")).casefold()
         ]
     rows = "".join(
         f"<tr><td>{user['id']}</td><td>{html.escape(str(user['name']))}</td>"
@@ -75,11 +76,11 @@ def list_page(email_query: str = "") -> str:
         for user in users
     )
     if not rows:
-        rows = '<tr><td colspan="3">検索結果がありません。</td></tr>' if email_query else '<tr><td colspan="3">登録データはありません。</td></tr>'
+                rows = '<tr><td colspan="3">検索結果がありません。</td></tr>' if search_query else '<tr><td colspan="3">登録データがありません。</td></tr>'
     return page("登録データ一覧", f"""<h1>登録ユーザー一覧</h1>
 <form action="/list" method="get">
-  <label for="email-search">メールアドレス検索:</label>
-  <input type="search" id="email-search" name="email" value="{html.escape(email_query)}">
+    <label for="user-search">名前・メールアドレス検索:</label>
+    <input type="search" id="user-search" name="email" value="{html.escape(search_query)}">
   <button type="submit">検索</button>
 </form>
 <table><thead><tr><th>ID</th><th>名前</th><th>メールアドレス</th></tr></thead>
