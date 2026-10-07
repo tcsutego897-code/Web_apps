@@ -13,32 +13,80 @@
 
     <div class="post-card">
         <p><strong>カテゴリ:</strong> {{ post['category'] }}</p>
-        <p><strong>投稿者:</strong> {{ post['author'] }}</p>
+        <p><strong>投稿者:</strong> {{ '匿名ユーザー' if post['is_anonymous'] else post['author'] }}</p>
         <p><strong>投稿日:</strong> {{ post['created_at'] }}</p>
-        <p><strong>本文:</strong><br>{{ post['content']|replace('\n', '<br>')|safe }}</p>
+        {% if post['mood_at_event'] or post['mood_now'] %}
+            <div class="mood-list" aria-label="投稿者が選択した気持ち">
+                {% if post['mood_at_event'] %}<span class="mood mood-{{ post['mood_at_event'] }}">当時: {{ mood_labels[post['mood_at_event']] }}</span>{% endif %}
+                {% if post['mood_now'] %}<span class="mood mood-{{ post['mood_now'] }}">現在: {{ mood_labels[post['mood_now']] }}</span>{% endif %}
+            </div>
+        {% endif %}
+        <p><strong>本文:</strong></p>
+        <p class="formatted-text">{{ post['content'] }}</p>
+        {% if image %}
+            <figure class="post-image">
+                <img src="{{ url_for('uploaded_image', filename=image['storage_key']) }}" alt="{{ image['alt_text'] }}">
+                <figcaption>{{ image['alt_text'] }}</figcaption>
+            </figure>
+        {% endif %}
         {% if post['cause'] %}
-            <p><strong>原因:</strong><br>{{ post['cause']|replace('\n', '<br>')|safe }}</p>
+            <p><strong>原因:</strong></p><p class="formatted-text">{{ post['cause'] }}</p>
         {% endif %}
         {% if post['reflection'] %}
-            <p><strong>反省点:</strong><br>{{ post['reflection']|replace('\n', '<br>')|safe }}</p>
+            <p><strong>反省点:</strong></p><p class="formatted-text">{{ post['reflection'] }}</p>
         {% endif %}
         {% if post['improvement_habit'] %}
-            <p><strong>改善策:</strong><br>{{ post['improvement_habit']|replace('\n', '<br>')|safe }}</p>
+            <p><strong>改善策:</strong></p><p class="formatted-text">{{ post['improvement_habit'] }}</p>
         {% endif %}
 
-        <form method="POST" action="/posts/{{ post['id'] }}/like">
-            <button type="submit">いいね ({{ like_count }})</button>
-        </form>
+        {% if like_count %}<p><small>旧いいね {{ like_count }}</small></p>{% endif %}
+        <p>共感 {{ reaction_counts['empathy'] }} / 参考になった {{ reaction_counts['useful'] }} / 応援 {{ reaction_counts['support'] }}</p>
+        {% if current_user %}
+            <div class="reaction-actions">
+                {% for reaction_type, label in [('empathy', '共感した'), ('useful', '参考になった'), ('support', '応援したい')] %}
+                    <form method="POST" action="/posts/{{ post['id'] }}/reactions">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="reaction_type" value="{{ reaction_type }}">
+                        <button type="submit" {% if my_reaction == reaction_type %}aria-pressed="true"{% else %}aria-pressed="false"{% endif %}>{{ label }}{% if my_reaction == reaction_type %}（選択中）{% endif %}</button>
+                    </form>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p><a href="{{ url_for('login', next=request.path) }}">ログイン</a>するとリアクションできます。</p>
+        {% endif %}
+        {% if current_user and post['user_id'] == current_user['id'] %}
+            <a href="{{ url_for('edit_post', post_id=post['id']) }}">投稿を編集</a>
+            <form method="POST" action="{{ url_for('delete_post', post_id=post['id']) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button type="submit">投稿を削除</button>
+            </form>
+        {% endif %}
+        {% if current_user %}
+            <form method="POST" action="{{ url_for('report_post', post_id=post['id']) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <label for="report-reason">問題を通報</label>
+                <select id="report-reason" name="reason" required>
+                    <option value="personal_data">個人情報</option>
+                    <option value="harassment">誹謗中傷</option>
+                    <option value="spam">スパム</option>
+                    <option value="other">その他</option>
+                </select>
+                <button type="submit">通報する</button>
+            </form>
+        {% endif %}
     </div>
 
     <h2>コメント</h2>
-    <form method="POST" action="/posts/{{ post['id'] }}/comments">
-        <label>名前</label>
-        <input type="text" name="author" required>
-        <label>コメント</label>
-        <textarea name="content" rows="4" required></textarea>
-        <button type="submit">コメントする</button>
-    </form>
+    {% if current_user %}
+        <form method="POST" action="/posts/{{ post['id'] }}/comments">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <label>コメント</label>
+            <textarea name="content" rows="4" required></textarea>
+            <button type="submit">コメントする</button>
+        </form>
+    {% else %}
+        <p><a href="{{ url_for('login', next=request.path) }}">ログイン</a>するとコメントできます。</p>
+    {% endif %}
 
     {% if comments %}
         {% for comment in comments %}

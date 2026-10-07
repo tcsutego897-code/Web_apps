@@ -14,6 +14,72 @@ h1, h2 {
   margin-bottom: 20px;
 }
 
+.inline-form {
+  display: inline-flex;
+  margin: 0;
+  vertical-align: middle;
+}
+
+.reaction-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reaction-actions form {
+  margin: 0;
+}
+
+button[aria-pressed="true"] {
+  background: #155e75;
+  outline: 2px solid #67e8f9;
+  outline-offset: 2px;
+}
+
+.formatted-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mood-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.mood {
+  display: inline-block;
+  padding: 5px 9px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.mood-frustrated { color: #9a3412; background: #ffedd5; }
+.mood-anxious { color: #1e40af; background: #dbeafe; }
+.mood-down { color: #475569; background: #e2e8f0; }
+.mood-relieved { color: #166534; background: #dcfce7; }
+.mood-hopeful { color: #0e7490; background: #cffafe; }
+.mood-other { color: #6b21a8; background: #f3e8ff; }
+
+.post-image {
+  margin: 16px 0;
+}
+
+.post-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 560px;
+  object-fit: contain;
+}
+
 form {
   display: flex;
   flex-direction: column;

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>管理画面</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>管理画面</h1>
+    <p><a href="/">投稿一覧へ戻る</a></p>
+    <section>
+        <h2>通報</h2>
+        {% if reports %}
+            {% for report in reports %}
+                <article class="post-summary">
+                    <p>通報 #{{ report['id'] }} / {{ report['reason'] }} / {{ report['status'] }}</p>
+                    {% if report['post_id'] %}<p><a href="{{ url_for('show_post', post_id=report['post_id']) }}">{{ report['title'] or '削除済みの投稿' }}</a></p>{% endif %}
+                    {% if report['status'] == 'pending' %}
+                        <form method="POST" action="{{ url_for('resolve_report', report_id=report['id']) }}">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit">確認済みにする</button>
+                        </form>
+                        {% if report['post_id'] %}
+                            <form method="POST" action="{{ url_for('admin_delete_post', post_id=report['post_id']) }}">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                <button type="submit">投稿を非表示にする</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                </article>
+            {% endfor %}
+        {% else %}
+            <p>通報はありません。</p>
+        {% endif %}
+    </section>
+    <section>
+        <h2>コメント</h2>
+        {% if comments %}
+            {% for comment in comments %}
+                <article class="comment-box">
+                    <p><a href="{{ url_for('show_post', post_id=comment['post_id']) }}">{{ comment['title'] }}</a> / {{ comment['author'] }}</p>
+                    <p class="formatted-text">{{ comment['content'] }}</p>
+                    <form method="POST" action="{{ url_for('admin_delete_comment', comment_id=comment['id']) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit">コメントを削除</button>
+                    </form>
+                </article>
+            {% endfor %}
+        {% else %}
+            <p>コメントはありません。</p>
+        {% endif %}
+    </section>
+</body>
+</html>

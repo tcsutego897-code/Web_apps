@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ログイン</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>ログイン</h1>
+    <p><a href="/">投稿一覧へ戻る</a></p>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}<ul class="messages">{% for message in messages %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
+    {% endwith %}
+    <form method="POST" action="{{ url_for('login', next=request.args.get('next', '')) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <label for="email">メールアドレス</label>
+        <input id="email" type="email" name="email" required autocomplete="email">
+        <label for="password">パスワード</label>
+        <input id="password" type="password" name="password" required autocomplete="current-password">
+        <button type="submit">ログイン</button>
+    </form>
+    <p>アカウントがない場合は<a href="/register">新規登録</a>できます。</p>
+</body>
+</html>

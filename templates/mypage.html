@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>マイページ</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>マイページ</h1>
+    <p><a href="/">投稿一覧へ戻る</a></p>
+    <section>
+        <h2>獲得したバッジ</h2>
+        {% if badges %}
+            <ul class="badge-list">
+                {% for badge in badges %}
+                    <li><strong>{{ badge['name'] }}</strong><span>{{ badge['description'] }}</span></li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>バッジはまだありません。経験の共有が誰かの支えになると獲得できます。</p>
+        {% endif %}
+    </section>
+    <section>
+        <h2>自分の投稿</h2>
+        {% if posts %}
+            <ul>
+                {% for post in posts %}
+                    <li><a href="{{ url_for('show_post', post_id=post['id']) }}">{{ post['title'] }}</a>{% if post['is_anonymous'] %}（匿名公開）{% endif %}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>投稿はまだありません。</p>
+        {% endif %}
+    </section>
+</body>
+</html>

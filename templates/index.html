@@ -8,7 +8,19 @@
 <body>
     <h1>大学生向け不合格体験記掲示板</h1>
     <div class="nav">
-        <a href="/posts/new">新規投稿</a>
+        {% if current_user %}
+            <span>{{ current_user['nickname'] }} さん</span>
+            <a href="{{ url_for('mypage') }}">マイページ</a>
+            {% if current_user['role'] == 'admin' %}<a href="{{ url_for('admin_dashboard') }}">管理</a>{% endif %}
+            <a href="/posts/new">新規投稿</a>
+            <form method="POST" action="/logout" class="inline-form">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button type="submit">ログアウト</button>
+            </form>
+        {% else %}
+            <a href="/login">ログイン</a>
+            <a href="/register">アカウント作成</a>
+        {% endif %}
     </div>
 
     {% with messages = get_flashed_messages() %}
@@ -25,9 +37,9 @@
         {% for post in posts %}
             <article class="post-summary">
                 <h2><a href="/posts/{{ post['id'] }}">{{ post['title'] }}</a></h2>
-                <p><strong>カテゴリ:</strong> {{ post['category'] }} / <strong>投稿者:</strong> {{ post['author'] }}</p>
+                <p><strong>カテゴリ:</strong> {{ post['category'] }} / <strong>投稿者:</strong> {{ '匿名ユーザー' if post['is_anonymous'] else post['author'] }}</p>
                 <p>{{ post['content'][:80] }}{% if post['content']|length > 80 %}...{% endif %}</p>
-                <p><small>コメント {{ post['comment_count'] }} / いいね {{ post['like_count'] }}</small></p>
+                <p><small>コメント {{ post['comment_count'] }} / 共感 {{ post['empathy_count'] }} / 参考 {{ post['useful_count'] }} / 応援 {{ post['support_count'] }}</small></p>
             </article>
         {% endfor %}
     {% else %}

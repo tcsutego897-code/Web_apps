@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>アカウント作成</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>アカウント作成</h1>
+    <p><a href="/">投稿一覧へ戻る</a></p>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}<ul class="messages">{% for message in messages %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
+    {% endwith %}
+    <form method="POST" action="/register">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <label for="nickname">ニックネーム</label>
+        <input id="nickname" type="text" name="nickname" maxlength="40" required autocomplete="nickname">
+        <label for="email">メールアドレス</label>
+        <input id="email" type="email" name="email" required autocomplete="email">
+        <label for="password">パスワード（12文字以上）</label>
+        <input id="password" type="password" name="password" minlength="12" required autocomplete="new-password">
+        <button type="submit">アカウントを作成</button>
+    </form>
+    <p>すでにアカウントをお持ちの場合は<a href="/login">ログイン</a>してください。</p>
+</body>
+</html>

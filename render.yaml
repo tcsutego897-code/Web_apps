@@ -4,3 +4,8 @@ services:
     runtime: python
     buildCommand: "bash render_build.sh"
     startCommand: "python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 2"
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        sync: false

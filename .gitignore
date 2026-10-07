@@ -13,6 +13,7 @@
 .venv/
 stage2_check.sqlite
 stage2_crud.sqlite
+uploads/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
