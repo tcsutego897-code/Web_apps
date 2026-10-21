@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Excel取り込み | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">IMPORT</p>
+  <h1>Excel取り込み</h1>
+  <p class="lead">ファイルを選び、シートと見出しを確認してから取り込みます。</p>
+  {% if error_message %}
+    <div class="notice notice-error" role="alert">{{ error_message }}</div>
+  {% endif %}
+  <section class="panel import-step">
+    <p class="step-label">STEP 1</p>
+    <h2>Excelファイルを選択</h2>
+    <p>.xlsx形式のみ。ファイルは一時保管し、取り込み後に削除します。</p>
+    <form action="{{ url_for('import_preview') }}" method="post" enctype="multipart/form-data">
+      <label class="form-label" for="workbook-upload">Excelファイル</label>
+      <input id="workbook-upload" name="upload" type="file" accept=".xlsx" required>
+      <label class="form-label" for="header-row">見出し行</label>
+      <input id="header-row" name="header_row" type="number" min="1" value="1" required>
+      <button class="button button-primary" type="submit">シートと内容を確認</button>
+    </form>
+  </section>
+{% endblock %}

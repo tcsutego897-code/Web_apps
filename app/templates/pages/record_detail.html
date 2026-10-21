@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}レコード詳細 | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">RECORD DETAIL</p>
+  {% if error_message %}
+    <section class="panel error-panel" role="alert">
+      <h1>詳細を表示できません</h1>
+      <p>{{ error_message }}</p>
+      <a class="button button-secondary" href="{{ back_url }}">検索結果に戻る</a>
+    </section>
+  {% else %}
+    <div class="page-heading">
+      <div>
+        <h1>{{ dataset_name }}</h1>
+        <p class="lead">Excelの{{ source_row_number }}行目のレコード詳細</p>
+      </div>
+      <a class="button button-secondary" href="{{ back_url }}">検索結果に戻る</a>
+    </div>
+
+    <section class="panel" aria-labelledby="record-detail-title">
+      <div class="panel-heading">
+        <h2 id="record-detail-title">全項目</h2>
+        <span class="status-chip">{{ field_values|length }} 項目</span>
+      </div>
+      {% if field_values %}
+        <dl class="record-details">
+          {% for item in field_values %}
+            <dt>{{ item.name }}</dt>
+            <dd class="record-value">{{ item.value }}</dd>
+          {% endfor %}
+        </dl>
+      {% else %}
+        <div class="empty-state">
+          <h3>項目がありません</h3>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

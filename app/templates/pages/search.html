@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}検索・閲覧 | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">SEARCH</p>
+  <h1>検索・閲覧</h1>
+  <p class="lead">データセットの項目を選び、条件を指定してレコードを探します。</p>
+
+  {% if error_message %}
+    <div class="notice notice-error" role="alert">{{ error_message }}</div>
+  {% endif %}
+
+  {% if not datasets %}
+    <section class="panel empty-state">
+      <h2>データセットはまだありません</h2>
+      <p>先にExcelファイルを取り込んでください。</p>
+      <a class="button button-primary" href="{{ url_for('import_page') }}">Excelを取り込む</a>
+    </section>
+  {% else %}
+    <section class="panel search-panel" aria-labelledby="search-options-title">
+      <h2 id="search-options-title">検索条件</h2>
+      <form action="{{ url_for('search') }}" method="get" id="search-form">
+        <label class="form-label" for="dataset-id">データセット</label>
+        <select id="dataset-id" name="dataset_id" required>
+          <option value="">データセットを選択</option>
+          {% for dataset in datasets %}
+            <option value="{{ dataset.id }}"
+              {% if results and results.selected_dataset and results.selected_dataset.id == dataset.id %}selected{% endif %}>
+              {{ dataset.name }}（{{ dataset.record_count }}件）
+            </option>
+          {% endfor %}
+        </select>
+
+        {% if results and results.selected_dataset %}
+          <div class="condition-heading">
+            <h3>検索する項目</h3>
+            <button class="button button-secondary button-small" type="button" id="add-condition">
+              ＋ 条件を追加
+            </button>
+          </div>
+          <div id="search-conditions" class="condition-list">
+            {% for row in condition_rows %}
+              <div class="condition-row">
+                <label class="form-label">項目
+                  <select name="field_key">
+                    <option value="">項目を選択</option>
+                    {% for field in results.fields if field.is_searchable %}
+                      <option value="{{ field.key }}" {% if row.field_key == field.key %}selected{% endif %}>
+                        {{ field.display_name }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="form-label">検索方法
+                  <select name="match_mode">
+                    <option value="partial" {% if row.match_mode == "partial" %}selected{% endif %}>部分一致</option>
+                    <option value="exact" {% if row.match_mode == "exact" %}selected{% endif %}>完全一致</option>
+                  </select>
+                </label>
+                <label class="form-label">検索語
+                  <input type="text" name="value" value="{{ row.value }}" maxlength="500" placeholder="検索語を入力">
+                </label>
+                <button class="button button-secondary button-small remove-condition" type="button" aria-label="この条件を削除">削除</button>
+              </div>
+            {% else %}
+              <div class="condition-row">
+                <label class="form-label">項目
+                  <select name="field_key">
+                    <option value="">項目を選択</option>
+                    {% for field in results.fields if field.is_searchable %}
+                      <option value="{{ field.key }}">{{ field.display_name }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="form-label">検索方法
+                  <select name="match_mode">
+                    <option value="partial">部分一致</option>
+                    <option value="exact">完全一致</option>
+                  </select>
+                </label>
+                <label class="form-label">検索語
+                  <input type="text" name="value" maxlength="500" placeholder="検索語を入力">
+                </label>
+                <button class="button button-secondary button-small remove-condition" type="button" aria-label="この条件を削除">削除</button>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="result-options">
+            <label class="form-label">並べ替え項目
+              <select name="sort_field">
+                <option value="">元の行順</option>
+                {% for field in results.fields %}
+                  <option value="{{ field.key }}" {% if results.sort_field == field.key %}selected{% endif %}>
+                    {{ field.display_name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="form-label">順序
+              <select name="sort_direction">
+                <option value="asc" {% if results.sort_direction == "asc" %}selected{% endif %}>昇順</option>
+                <option value="desc" {% if results.sort_direction == "desc" %}selected{% endif %}>降順</option>
+              </select>
+            </label>
+            <label class="form-label">1ページの件数
+              <select name="page_size">
+                {% for size in [10, 25, 50, 100] %}
+                  <option value="{{ size }}" {% if results.page_size == size %}selected{% endif %}>{{ size }}件</option>
+                {% endfor %}
+              </select>
+            </label>
+          </div>
+        {% endif %}
+
+        <div class="search-actions">
+          <button class="button button-primary" type="submit" {% if not (results and results.selected_dataset) %}formaction="{{ url_for('search') }}"{% endif %}>
+            検索する
+          </button>
+          <a class="text-link" href="{{ url_for('search') }}">条件をクリア</a>
+        </div>
+      </form>
+      {% if results and results.selected_dataset %}
+        <template id="condition-template">
+          <div class="condition-row">
+            <label class="form-label">項目
+              <select name="field_key">
+                <option value="">項目を選択</option>
+                {% for field in results.fields if field.is_searchable %}
+                  <option value="{{ field.key }}">{{ field.display_name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="form-label">検索方法
+              <select name="match_mode">
+                <option value="partial">部分一致</option>
+                <option value="exact">完全一致</option>
+              </select>
+            </label>
+            <label class="form-label">検索語
+              <input type="text" name="value" maxlength="500" placeholder="検索語を入力">
+            </label>
+            <button class="button button-secondary button-small remove-condition" type="button" aria-label="この条件を削除">削除</button>
+          </div>
+        </template>
+        <script>
+          const conditionList = document.getElementById("search-conditions");
+          const conditionTemplate = document.getElementById("condition-template");
+          const addConditionButton = document.getElementById("add-condition");
+          const maxConditions = {{ max_search_conditions }};
+
+          function updateConditionButtons() {
+            const rows = conditionList.querySelectorAll(".condition-row");
+            addConditionButton.disabled = rows.length >= maxConditions;
+            rows.forEach((row) => {
+              row.querySelector(".remove-condition").disabled = rows.length <= 1;
+            });
+          }
+
+          addConditionButton.addEventListener("click", () => {
+            if (conditionList.querySelectorAll(".condition-row").length >= maxConditions) {
+              return;
+            }
+            conditionList.append(conditionTemplate.content.cloneNode(true));
+            updateConditionButtons();
+          });
+
+          conditionList.addEventListener("click", (event) => {
+            if (event.target.matches(".remove-condition")) {
+              event.target.closest(".condition-row").remove();
+              updateConditionButtons();
+            }
+          });
+
+          updateConditionButtons();
+        </script>
+      {% endif %}
+    </section>
+
+    {% if results and results.selected_dataset %}
+      <section class="panel search-results" aria-labelledby="search-results-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">RESULTS</p>
+            <h2 id="search-results-title">{{ results.selected_dataset.name }}</h2>
+          </div>
+          <span class="status-chip">{{ results.total_count }} 件</span>
+        </div>
+        {% if results.records %}
+          <div class="table-scroll">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th scope="col">Excel行</th>
+                  {% for field in display_fields %}
+                    <th scope="col">{{ field.display_name }}</th>
+                  {% endfor %}
+                  <th scope="col">詳細</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for record in results.records %}
+                  <tr>
+                    <th scope="row">{{ record.source_row_number }}</th>
+                    {% for field in display_fields %}
+                      {% set cell_value = record.data.get(field.key) %}
+                      <td>{{ cell_value if cell_value is not none and cell_value != "" else "—" }}</td>
+                    {% endfor %}
+                    <td>
+                      <a class="text-link" href="{{ url_for('record_detail', dataset_id=results.selected_dataset.id, record_id=record.id) }}{% if detail_query %}?{{ detail_query }}{% endif %}">
+                        詳細を見る
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <span>
+              {% if results.total_count %}
+                {{ (results.page - 1) * results.page_size + 1 }}–{{ (results.page - 1) * results.page_size + results.records|length }} 件目 / 全 {{ results.total_count }} 件
+              {% endif %}
+              {% if results.total_pages %}（{{ results.page }} / {{ results.total_pages }} ページ）{% endif %}
+            </span>
+            <div class="pagination-actions">
+              {% if previous_page_url %}
+                <a class="button button-secondary button-small" href="{{ previous_page_url }}">前へ</a>
+              {% else %}
+                <span class="button button-secondary button-small button-disabled" aria-disabled="true">前へ</span>
+              {% endif %}
+              {% if next_page_url %}
+                <a class="button button-secondary button-small" href="{{ next_page_url }}">次へ</a>
+              {% else %}
+                <span class="button button-secondary button-small button-disabled" aria-disabled="true">次へ</span>
+              {% endif %}
+            </div>
+          </div>
+        {% elif results.searched %}
+          <div class="empty-state">
+            <span class="empty-icon" aria-hidden="true">⌕</span>
+            <h3>条件に一致するデータはありません</h3>
+            <p>検索語を短くするか、条件を変更してください。</p>
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <h3>このデータセットにレコードはありません</h3>
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}取り込みプレビュー | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">IMPORT / PREVIEW</p>
+  <h1>取り込みプレビュー</h1>
+  <p class="lead">対象シートと見出しを確認し、必要なら表示名を調整してください。</p>
+
+  {% if error_message %}
+    <div class="notice notice-error" role="alert">{{ error_message }}</div>
+  {% endif %}
+
+  <section class="panel import-step">
+    <p class="step-label">STEP 2</p>
+    <h2>シートと見出し行</h2>
+    <form action="{{ url_for('import_preview') }}" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="staging_token" value="{{ staging_token }}">
+      <input type="hidden" name="filename" value="{{ filename }}">
+      <label class="form-label" for="sheet-name">表示シート</label>
+      <select id="sheet-name" name="sheet_name" {% if not staging_token %}disabled{% endif %} required>
+        {% for sheet in visible_sheets %}
+          <option value="{{ sheet }}" {% if sheet == sheet_name %}selected{% endif %}>{{ sheet }}</option>
+        {% endfor %}
+      </select>
+      <label class="form-label" for="preview-header-row">見出し行</label>
+      <input id="preview-header-row" name="header_row" type="number" min="1" value="{{ header_row }}" required>
+      {% if staging_token %}
+        <button class="button button-secondary" type="submit">プレビューを更新</button>
+      {% else %}
+        <label class="form-label" for="retry-upload">Excelファイルを選び直す</label>
+        <input id="retry-upload" name="upload" type="file" accept=".xlsx" required>
+        <button class="button button-primary" type="submit">再度プレビュー</button>
+      {% endif %}
+    </form>
+  </section>
+
+  {% if preview %}
+    <section class="panel import-step">
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">PREVIEW</p>
+          <h2>{{ preview.sheet_name }} の内容</h2>
+        </div>
+        <span class="status-chip">{{ preview.record_count }} 件</span>
+      </div>
+
+      {% if preview.warnings %}
+        <div class="notice notice-warning" role="status">
+          <strong>取り込み前に確認してください</strong>
+          <ul>
+            {% for warning in preview.warnings %}
+              <li>{{ warning }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <div class="table-scroll">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th scope="col">Excel行</th>
+              {% for field in preview.fields %}
+                <th scope="col">{{ field.source_name or "（空見出し）" }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in preview.sample_rows %}
+              <tr>
+                <th scope="row">{{ row.row_number }}</th>
+                {% for value in row.values %}
+                  <td>{{ value if value is not none else "—" }}</td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="help-text">プレビューは先頭{{ preview.sample_rows|length }}件です。全{{ preview.record_count }}件を取り込みます。</p>
+    </section>
+
+    <section class="panel import-step">
+      <p class="step-label">STEP 3</p>
+      <h2>取り込みを確定</h2>
+      <form action="{{ url_for('import_confirm') }}" method="post">
+        <input type="hidden" name="staging_token" value="{{ staging_token }}">
+        <input type="hidden" name="filename" value="{{ filename }}">
+        <input type="hidden" name="sheet_name" value="{{ preview.sheet_name }}">
+        <input type="hidden" name="header_row" value="{{ preview.header_row }}">
+        <label class="form-label" for="dataset-name">データセット名</label>
+        <input id="dataset-name" name="dataset_name" type="text" value="{{ default_dataset_name }}" maxlength="255" required>
+        <fieldset class="field-name-list">
+          <legend>項目の表示名</legend>
+          {% for field in preview.fields %}
+            <div class="field-name-row">
+              <label class="form-label" for="field-name-{{ loop.index }}">
+                {{ field.source_name or "（空見出し）" }}
+              </label>
+              <input id="field-name-{{ loop.index }}" name="display_names" type="text" value="{{ field.display_name }}" maxlength="255" required>
+            </div>
+          {% endfor %}
+        </fieldset>
+        <p class="help-text">元のExcel見出しと行番号を保持します。空行は除外し、数式は計算せず保存済みの値だけを取り込みます。</p>
+        <button class="button button-primary" type="submit">この内容で取り込む</button>
+      </form>
+    </section>
+  {% endif %}
+  <a class="text-link back-link" href="{{ url_for('import_page') }}">ファイル選択へ戻る →</a>
+{% endblock %}

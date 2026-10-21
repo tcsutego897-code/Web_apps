@@ -1,0 +1,1 @@
+"""Akashic Record web application."""

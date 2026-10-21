@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}ページが見つかりません | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <section class="panel error-panel">
+    <p class="eyebrow">404</p>
+    <h1>ページが見つかりません</h1>
+    <p class="lead">URLを確認するか、データセット一覧に戻ってください。</p>
+    <a class="button button-primary" href="{{ url_for('datasets') }}">一覧へ戻る</a>
+  </section>
+{% endblock %}

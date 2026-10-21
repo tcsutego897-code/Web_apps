@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}データセット一覧 | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">LIBRARY</p>
+      <h1>データセット</h1>
+      <p class="lead">取り込んだExcelデータをまとめて管理します。</p>
+    </div>
+    <a class="button button-primary" href="{{ url_for('import_page') }}">Excelを取り込む</a>
+  </div>
+  <section class="panel" aria-labelledby="dataset-list-title">
+    <div class="panel-heading">
+      <h2 id="dataset-list-title">登録済みデータ</h2>
+      <span class="status-chip">{{ datasets|length }} 件</span>
+    </div>
+    {% if error_message %}
+      <div class="notice notice-error" role="alert">{{ error_message }}</div>
+    {% elif datasets %}
+      <div class="table-scroll">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th scope="col">データセット</th>
+              <th scope="col">元ファイル</th>
+              <th scope="col">シート</th>
+              <th scope="col">レコード</th>
+              <th scope="col">取り込み日時</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for dataset in datasets %}
+              <tr>
+                <th scope="row">{{ dataset.name }}</th>
+                <td>{{ dataset.source_filename }}</td>
+                <td>{{ dataset.sheet_name }}</td>
+                <td>{{ dataset.record_count }}</td>
+                <td>{{ dataset.imported_at.strftime("%Y-%m-%d %H:%M") }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">＋</span>
+        <h3>データセットはまだありません</h3>
+        <p>Excelファイルを取り込むと、ここに一覧が表示されます。</p>
+        <a class="text-link" href="{{ url_for('import_page') }}">取り込み画面へ →</a>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

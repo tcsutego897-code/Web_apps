@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}取り込み完了 | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">IMPORT / COMPLETE</p>
+  <h1>取り込みが完了しました</h1>
+  <p class="lead">Excelファイルの内容を新しいデータセットとして保存しました。</p>
+  <section class="panel result-panel">
+    <span class="status-chip">成功</span>
+    <h2>{{ result.dataset_name }}</h2>
+    <dl class="result-list">
+      <div><dt>データセットID</dt><dd>{{ result.dataset_id }}</dd></div>
+      <div><dt>取り込み件数</dt><dd>{{ result.record_count }} 件</dd></div>
+    </dl>
+    {% if result.warnings %}
+      <div class="notice notice-warning" role="status">
+        <strong>取り込み時の注意</strong>
+        <ul>{% for warning in result.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+    <a class="button button-primary" href="{{ url_for('datasets') }}">データセット一覧へ</a>
+  </section>
+{% endblock %}
