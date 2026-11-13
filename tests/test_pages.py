@@ -75,8 +75,9 @@ def test_liveness_check_does_not_require_database() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_readiness_check_confirms_database_connection() -> None:
-    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+def test_readiness_check_confirms_database_connection(tmp_path) -> None:
+    test_engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'ready.db'}")
+    Base.metadata.create_all(test_engine)
     try:
         with patch("app.routers.health.get_engine", return_value=test_engine):
             response = get("/health/ready")
@@ -87,6 +88,23 @@ def test_readiness_check_confirms_database_connection() -> None:
     assert response.json() == {"status": "ok", "database": "connected"}
 
 
+def test_readiness_check_reports_outdated_database_schema() -> None:
+    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+    try:
+        with patch("app.routers.health.get_engine", return_value=test_engine):
+            response = get("/health/ready")
+    finally:
+        test_engine.dispose()
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "unavailable",
+        "database": "connected",
+        "schema": "outdated",
+        "diagnostic": "SCHEMA_OUTDATED",
+    }
+
+
 def test_readiness_check_reports_database_failure() -> None:
     unavailable_engine = Mock()
     unavailable_engine.connect.side_effect = SQLAlchemyError("database offline")
@@ -94,4 +112,8 @@ def test_readiness_check_reports_database_failure() -> None:
         response = get("/health/ready")
 
     assert response.status_code == 503
-    assert response.json() == {"status": "unavailable", "database": "disconnected"}
+    assert response.json() == {
+        "status": "unavailable",
+        "database": "disconnected",
+        "diagnostic": "DATABASE_UNREACHABLE",
+    }

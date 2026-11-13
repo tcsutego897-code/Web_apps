@@ -3,11 +3,12 @@ import re
 from collections.abc import Iterator
 from pathlib import Path
 from sqlite3 import Connection
-from unittest.mock import patch
+from unittest.mock import MagicMock, Mock, patch
 
 import httpx
 import pytest
 from sqlalchemy import create_engine, event, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -404,6 +405,49 @@ def test_registration_rejects_duplicate_email_and_short_password(
     assert "既に登録されています" in duplicate.text
     assert short_password.status_code == 400
     assert "12〜1024文字" in short_password.text
+
+
+def test_registration_database_error_links_to_safe_diagnostics(
+    auth_database: Engine,
+) -> None:
+    async def run() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            follow_redirects=False,
+        ) as client:
+            page = await client.get("/register")
+            token_match = re.search(
+                r'name="csrf_token" value="([^"]+)"',
+                page.text,
+            )
+            assert token_match is not None
+            return await client.post(
+                "/register",
+                data={
+                    "email": "database-error@example.test",
+                    "password": TEST_PASSWORD,
+                    "password_confirmation": TEST_PASSWORD,
+                    "csrf_token": token_match.group(1),
+                },
+            )
+
+    database_session = MagicMock()
+    database_session.__enter__.return_value.commit.side_effect = SQLAlchemyError(
+        "private database detail"
+    )
+    with (
+        patch("app.routers.auth.get_engine", return_value=auth_database),
+        patch("app.routers.auth.Session", return_value=database_session),
+    ):
+        response = asyncio.run(run())
+
+    assert response.status_code == 503
+    assert "DB状態診断をご確認ください" in response.text
+    assert "/health/ready" in response.text
+    assert "DATABASE_UNREACHABLE" in response.text
+    assert "private database detail" not in response.text
 
 
 def test_importer_can_open_import_page_but_csrf_is_required(

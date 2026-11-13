@@ -57,6 +57,7 @@ def render_registration(
     status_code: int = 200,
     error_message: str | None = None,
     email: str = "",
+    show_database_diagnostic: bool = False,
 ) -> HTMLResponse:
     return templates.TemplateResponse(
         request=request,
@@ -66,6 +67,7 @@ def render_registration(
             "csrf_token": get_csrf_token(request),
             "error_message": error_message,
             "email": email,
+            "show_database_diagnostic": show_database_diagnostic,
             "current_user": getattr(request.state, "current_user", None),
         },
         status_code=status_code,
@@ -134,20 +136,30 @@ def register_submit(
             session.add(user)
             session.commit()
             user_id = user.id
-    except IntegrityError:
+    except IntegrityError as error:
+        if "uq_users_email_lower" in str(error.orig):
+            return render_registration(
+                request,
+                status_code=409,
+                error_message="このメールアドレスは既に登録されています。",
+                email=normalized_email,
+            )
+        logger.exception("Database constraint failed while registering an account")
         return render_registration(
             request,
-            status_code=409,
-            error_message="このメールアドレスは既に登録されています。",
+            status_code=503,
+            error_message="データベースへの保存に失敗しました。DB状態診断をご確認ください。",
             email=normalized_email,
+            show_database_diagnostic=True,
         )
     except SQLAlchemyError:
         logger.exception("Could not register a new account")
         return render_registration(
             request,
             status_code=503,
-            error_message="アカウントを作成できません。時間をおいて再度お試しください。",
+            error_message="アカウントを作成できません。DB状態診断をご確認ください。",
             email=normalized_email,
+            show_database_diagnostic=True,
         )
 
     request.session.clear()
