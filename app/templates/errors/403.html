@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}操作できません | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <section class="panel error-panel" role="alert">
+    <p class="eyebrow">403 / FORBIDDEN</p>
+    <h1>この操作はできません</h1>
+    <p>{{ error_message }}</p>
+    {% if current_user %}
+      <a class="button button-secondary" href="{{ url_for('datasets') }}">データセット一覧へ</a>
+    {% else %}
+      <a class="button button-primary" href="{{ url_for('login') }}">ログイン画面へ</a>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -13,13 +13,53 @@
     <nav class="site-nav" aria-label="メインメニュー">
       <a href="{{ url_for('datasets') }}" {% if request.url.path == "/" %}aria-current="page"{% endif %}>データセット</a>
       <a href="{{ url_for('search') }}" {% if request.url.path == "/search" %}aria-current="page"{% endif %}>検索・閲覧</a>
-      <a href="{{ url_for('import_page') }}" {% if request.url.path == "/import" %}aria-current="page"{% endif %}>Excel取り込み</a>
-      <a href="{{ url_for('login') }}" {% if request.url.path == "/login" %}aria-current="page"{% endif %}>ログイン</a>
+      {% if current_user and current_user.role == "importer" %}
+        <a href="{{ url_for('import_page') }}" {% if request.url.path == "/import" %}aria-current="page"{% endif %}>Excel取り込み</a>
+      {% endif %}
+      {% if current_user %}
+        <span class="account-label">{{ current_user.email }}</span>
+        <form class="logout-form" action="{{ url_for('logout') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="nav-logout" type="submit">ログアウト</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('login') }}" {% if request.url.path == "/login" %}aria-current="page"{% endif %}>ログイン</a>
+      {% endif %}
     </nav>
   </header>
   <main class="page-shell">
     {% block content %}{% endblock %}
   </main>
-  <footer class="site-footer">{{ app_name }} <span>・ ローカル開発用</span></footer>
+  <footer class="site-footer">{{ app_name }}</footer>
+  <script>
+    document.querySelectorAll("form[data-loading-message]").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        if (form.dataset.submitting === "true") {
+          event.preventDefault();
+          return;
+        }
+
+        form.dataset.submitting = "true";
+        form.setAttribute("aria-busy", "true");
+        const status = form.querySelector(".form-status");
+        if (status) {
+          status.textContent = form.dataset.loadingMessage;
+          status.hidden = false;
+        }
+
+        form
+          .querySelectorAll('button[type="submit"], input[type="submit"]')
+          .forEach((button) => {
+            button.disabled = true;
+            if (button instanceof HTMLButtonElement && button.dataset.loadingLabel) {
+              button.textContent = button.dataset.loadingLabel;
+            }
+            if (button instanceof HTMLInputElement && button.dataset.loadingLabel) {
+              button.value = button.dataset.loadingLabel;
+            }
+          });
+      });
+    });
+  </script>
 </body>
 </html>

@@ -29,6 +29,7 @@ from app.services.upload_storage import (
     read_staged_upload,
     read_upload,
 )
+from tests.security_helpers import add_user, sign_in
 from starlette.datastructures import UploadFile
 
 
@@ -116,7 +117,17 @@ async def request(
     async with httpx.AsyncClient(
         transport=transport,
         base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
+        await sign_in(client)
+        if method.upper() == "POST":
+            import_page = await client.get("/import")
+            token_match = re.search(
+                r'name="csrf_token" value="([^"]+)"',
+                import_page.text,
+            )
+            assert token_match is not None
+            data = {**(data or {}), "csrf_token": token_match.group(1)}
         return await client.request(method, path, data=data, files=files)
 
 
@@ -323,6 +334,8 @@ def test_preview_and_confirm_import_store_records_and_history(tmp_path: Path) ->
         connection.execute("PRAGMA foreign_keys = ON")
 
     Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        add_user(session)
     upload = {
         "upload": (
             "people.xlsx",
@@ -333,6 +346,8 @@ def test_preview_and_confirm_import_store_records_and_history(tmp_path: Path) ->
     try:
         with (
             patch("app.services.excel_import.get_engine", return_value=engine),
+            patch("app.routers.auth.get_engine", return_value=engine),
+            patch("app.security.get_engine", return_value=engine),
             patch("app.routers.pages.get_engine", return_value=engine),
             patch(
                 "app.services.upload_storage.STAGING_DIRECTORY",
@@ -348,6 +363,12 @@ def test_preview_and_confirm_import_store_records_and_history(tmp_path: Path) ->
             assert "取り込みプレビュー" in preview_response.text
             assert "Name" in preview_response.text
             assert "2000-01-02" in preview_response.text
+            assert (
+                'data-loading-message="データを取り込んでいます。'
+                in preview_response.text
+            )
+            assert 'role="status" aria-live="polite" hidden' in preview_response.text
+            assert "表は横にスクロールできます。" in preview_response.text
 
             token_match = re.search(
                 r'name="staging_token" value="([A-Za-z0-9_-]{43})"',
@@ -493,9 +514,13 @@ def test_import_validation_failure_is_recorded_and_does_not_create_dataset(
 def test_preview_row_error_is_saved_to_import_history(tmp_path: Path) -> None:
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'row-error.db'}")
     Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        add_user(session)
     try:
         with (
             patch("app.services.excel_import.get_engine", return_value=engine),
+            patch("app.routers.auth.get_engine", return_value=engine),
+            patch("app.security.get_engine", return_value=engine),
             patch(
                 "app.services.upload_storage.STAGING_DIRECTORY",
                 tmp_path / "row-error-staging",

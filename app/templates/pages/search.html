@@ -188,7 +188,7 @@
           <span class="status-chip">{{ results.total_count }} 件</span>
         </div>
         {% if results.records %}
-          <div class="table-scroll">
+          <div class="table-scroll" role="region" aria-label="検索結果一覧。横にスクロールできます" tabindex="0">
             <table class="preview-table">
               <thead>
                 <tr>
@@ -217,6 +217,7 @@
               </tbody>
             </table>
           </div>
+          <p class="table-scroll-hint">表は横にスクロールできます。</p>
           <div class="pagination">
             <span>
               {% if results.total_count %}

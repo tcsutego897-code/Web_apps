@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: akashic-record
+    runtime: python
+    plan: starter
+    region: singapore
+    buildCommand: python -m pip install -r requirements.txt
+    startCommand: >-
+      python -m alembic upgrade head &&
+      exec python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health/ready
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SESSION_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: akashic-record-db
+          property: connectionString
+
+databases:
+  - name: akashic-record-db
+    databaseName: akashic_record
+    user: akashic_record
+    plan: basic-256mb
+    region: singapore

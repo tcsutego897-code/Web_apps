@@ -20,6 +20,7 @@ from app.services.search import (
     SearchInputError,
     search_records,
 )
+from tests.security_helpers import add_user, sign_in
 
 
 @pytest.fixture
@@ -33,6 +34,7 @@ def search_database(tmp_path: Path) -> Iterator[tuple[Engine, int]]:
 
     Base.metadata.create_all(engine)
     with Session(engine) as session:
+        add_user(session)
         people = Dataset(
             name="People",
             source_filename="people.xlsx",
@@ -304,7 +306,9 @@ async def _get_search(path: str, parameters: list[tuple[str, str]]) -> httpx.Res
     async with httpx.AsyncClient(
         transport=transport,
         base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
+        await sign_in(client)
         return await client.get(path, params=parameters)
 
 
@@ -316,7 +320,11 @@ def test_search_page_renders_filters_results_pagination_and_clear_link(
     search_database: tuple[Engine, int],
 ) -> None:
     engine, dataset_id = search_database
-    with patch("app.routers.pages.get_engine", return_value=engine):
+    with (
+        patch("app.routers.auth.get_engine", return_value=engine),
+        patch("app.security.get_engine", return_value=engine),
+        patch("app.routers.pages.get_engine", return_value=engine),
+    ):
         response = get_search(
             "/search",
             [
@@ -340,7 +348,11 @@ def test_search_page_rejects_unregistered_search_key(
     search_database: tuple[Engine, int],
 ) -> None:
     engine, dataset_id = search_database
-    with patch("app.routers.pages.get_engine", return_value=engine):
+    with (
+        patch("app.routers.auth.get_engine", return_value=engine),
+        patch("app.security.get_engine", return_value=engine),
+        patch("app.routers.pages.get_engine", return_value=engine),
+    ):
         response = get_search(
             "/search",
             [
@@ -359,7 +371,11 @@ def test_search_list_shows_representative_fields_and_links_to_details(
     search_database: tuple[Engine, int],
 ) -> None:
     engine, dataset_id = search_database
-    with patch("app.routers.pages.get_engine", return_value=engine):
+    with (
+        patch("app.routers.auth.get_engine", return_value=engine),
+        patch("app.security.get_engine", return_value=engine),
+        patch("app.routers.pages.get_engine", return_value=engine),
+    ):
         response = get_search(
             "/search",
             [("dataset_id", str(dataset_id)), ("page_size", "1")],
@@ -367,6 +383,8 @@ def test_search_list_shows_representative_fields_and_links_to_details(
 
     assert response.status_code == 200
     assert "詳細を見る" in response.text
+    assert "検索結果一覧。横にスクロールできます" in response.text
+    assert "表は横にスクロールできます。" in response.text
     assert f"/datasets/{dataset_id}/records/" in response.text
     assert "Only shown in detail" not in response.text
 
@@ -385,7 +403,11 @@ def test_record_detail_shows_every_field_and_preserves_search_context(
         assert record is not None
         record_id = record.id
 
-    with patch("app.routers.pages.get_engine", return_value=engine):
+    with (
+        patch("app.routers.auth.get_engine", return_value=engine),
+        patch("app.security.get_engine", return_value=engine),
+        patch("app.routers.pages.get_engine", return_value=engine),
+    ):
         response = get_search(
             f"/datasets/{dataset_id}/records/{record_id}",
             [
@@ -425,7 +447,11 @@ def test_record_detail_cannot_open_record_from_another_dataset(
         assert order_record is not None
         order_record_id = order_record.id
 
-    with patch("app.routers.pages.get_engine", return_value=engine):
+    with (
+        patch("app.routers.auth.get_engine", return_value=engine),
+        patch("app.security.get_engine", return_value=engine),
+        patch("app.routers.pages.get_engine", return_value=engine),
+    ):
         response = get_search(
             f"/datasets/{people_dataset_id}/records/{order_record_id}",
             [],

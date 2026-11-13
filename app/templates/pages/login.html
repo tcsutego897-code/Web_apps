@@ -5,10 +5,25 @@
 {% block content %}
   <p class="eyebrow">ACCOUNT</p>
   <h1>ログイン</h1>
-  <p class="lead">アカウントでサインインします。</p>
-  <section class="panel placeholder-panel">
-    <span class="status-chip">準備中</span>
-    <h2>ログイン画面</h2>
-    <p>認証と権限管理は後続フェーズで実装します。この画面ではまだサインインできません。</p>
+  <p class="lead">登録済みアカウントでサインインします。</p>
+
+  {% if error_message %}
+    <div class="notice notice-error" role="alert">{{ error_message }}</div>
+  {% endif %}
+
+  <section class="panel login-panel" aria-labelledby="login-title">
+    <h2 id="login-title">アカウント情報</h2>
+    <form action="{{ url_for('login_submit') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="next_url" value="{{ next_url }}">
+      <label class="form-label" for="login-email">メールアドレス</label>
+      <input id="login-email" name="email" type="email" maxlength="320"
+        autocomplete="username" required>
+      <label class="form-label" for="login-password">パスワード</label>
+      <input id="login-password" name="password" type="password" maxlength="1024"
+        autocomplete="current-password" required>
+      <button class="button button-primary" type="submit">ログイン</button>
+    </form>
+    <p class="help-text">アカウントは管理者から発行されたものを使用してください。</p>
   </section>
 {% endblock %}

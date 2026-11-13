@@ -1,10 +1,12 @@
 import logging
 
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import get_settings
+from app.models import User
+from app.security import get_csrf_token, require_importer, verify_csrf_token
 from app.services.excel_import import (
     ImportInputError,
     WorkbookPreview,
@@ -72,6 +74,8 @@ def render_preview(
         visible_sheets=visible_sheets or [],
         preview=preview,
         error_message=error_message,
+        csrf_token=get_csrf_token(request),
+        current_user=getattr(request.state, "current_user", None),
         default_dataset_name=(
             f"{filename.rsplit('.', 1)[0]} - {sheet_name}" if filename else ""
         ),
@@ -81,12 +85,15 @@ def render_preview(
 @router.post("/import/preview", response_class=HTMLResponse, name="import_preview")
 async def import_preview_page(
     request: Request,
+    _user: User = Depends(require_importer),
+    _csrf_valid: None = Depends(verify_csrf_token),
     upload: UploadFile | None = File(None),
     staging_token: str = Form(""),
     filename: str = Form(""),
     sheet_name: str = Form(""),
     header_row: str = Form("1"),
 ) -> HTMLResponse:
+    del _user, _csrf_valid
     created_stage = False
     content = b""
     visible_sheets: list[str] = []
@@ -161,6 +168,8 @@ async def import_preview_page(
 @router.post("/import/confirm", response_class=HTMLResponse, name="import_confirm")
 def confirm_import_page(
     request: Request,
+    _user: User = Depends(require_importer),
+    _csrf_valid: None = Depends(verify_csrf_token),
     staging_token: str = Form(""),
     filename: str = Form(""),
     sheet_name: str = Form(""),
@@ -168,6 +177,7 @@ def confirm_import_page(
     dataset_name: str = Form(""),
     display_names: list[str] | None = Form(None),
 ) -> HTMLResponse:
+    del _user, _csrf_valid
     content = b""
     try:
         filename = normalize_filename(filename)

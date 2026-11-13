@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Akashic Record"
     environment: str = "development"
+    session_secret_key: str = ""
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@127.0.0.1:5432/akashic_record"
     )

@@ -3,7 +3,7 @@ from datetime import date, datetime, time
 from typing import Any
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_engine
-from app.models import Dataset, DatasetField, Record
+from app.models import Dataset, DatasetField, Record, User
+from app.security import get_csrf_token, require_authenticated_user, require_importer
 from app.services.search import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
@@ -47,7 +48,12 @@ def render_page(
     return templates.TemplateResponse(
         request=request,
         name=template_name,
-        context={"app_name": get_settings().app_name, **context},
+        context={
+            "app_name": get_settings().app_name,
+            "csrf_token": get_csrf_token(request),
+            "current_user": getattr(request.state, "current_user", None),
+            **context,
+        },
         status_code=status_code,
     )
 
@@ -88,7 +94,11 @@ def format_record_value(value: Any) -> str:
 
 
 @router.get("/", response_class=HTMLResponse, name="datasets")
-def datasets_page(request: Request) -> HTMLResponse:
+def datasets_page(
+    request: Request,
+    _user: User = Depends(require_authenticated_user),
+) -> HTMLResponse:
+    del _user
     try:
         with Session(get_engine()) as session:
             datasets = session.scalars(
@@ -110,6 +120,7 @@ def datasets_page(request: Request) -> HTMLResponse:
 @router.get("/search", response_class=HTMLResponse, name="search")
 def search_page(
     request: Request,
+    _user: User = Depends(require_authenticated_user),
     dataset_id: int | None = None,
     field_key: list[str] = Query(default=[]),
     match_mode: list[str] = Query(default=[]),
@@ -119,6 +130,7 @@ def search_page(
     sort_field: str = "",
     sort_direction: str = "asc",
 ) -> HTMLResponse:
+    del _user
     error_message = None
     results = None
     condition_rows = []
@@ -273,7 +285,9 @@ def record_detail_page(
     request: Request,
     dataset_id: int,
     record_id: int,
+    _user: User = Depends(require_authenticated_user),
 ) -> HTMLResponse:
+    del _user
     try:
         with Session(get_engine()) as session:
             dataset = session.get(Dataset, dataset_id)
@@ -327,10 +341,9 @@ def record_detail_page(
 
 
 @router.get("/import", response_class=HTMLResponse, name="import_page")
-def import_page(request: Request) -> HTMLResponse:
+def import_page(
+    request: Request,
+    _user: User = Depends(require_importer),
+) -> HTMLResponse:
+    del _user
     return render_page(request, "pages/import.html")
-
-
-@router.get("/login", response_class=HTMLResponse, name="login")
-def login_page(request: Request) -> HTMLResponse:
-    return render_page(request, "pages/login.html")

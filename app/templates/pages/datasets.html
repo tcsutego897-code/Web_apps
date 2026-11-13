@@ -19,7 +19,7 @@
     {% if error_message %}
       <div class="notice notice-error" role="alert">{{ error_message }}</div>
     {% elif datasets %}
-      <div class="table-scroll">
+      <div class="table-scroll" role="region" aria-label="データセット一覧。横にスクロールできます" tabindex="0">
         <table class="preview-table">
           <thead>
             <tr>
@@ -43,6 +43,7 @@
           </tbody>
         </table>
       </div>
+      <p class="table-scroll-hint">表は横にスクロールできます。</p>
     {% else %}
       <div class="empty-state">
         <span class="empty-icon" aria-hidden="true">＋</span>
