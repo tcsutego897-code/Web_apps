@@ -447,6 +447,7 @@ def test_registration_database_error_links_to_safe_diagnostics(
     assert "DB状態診断をご確認ください" in response.text
     assert "/health/ready" in response.text
     assert "DATABASE_UNREACHABLE" in response.text
+    assert "Internal Database URL" in response.text
     assert "private database detail" not in response.text
 
 

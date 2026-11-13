@@ -3,12 +3,11 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.config import get_settings
-from app.database import normalize_database_url
+from app.database import get_database_url
 from app.models import Base
 
 config = context.config
-database_url = normalize_database_url(get_settings().database_url)
+database_url = get_database_url()
 config.set_main_option(
     "sqlalchemy.url",
     database_url.replace("%", "%%"),

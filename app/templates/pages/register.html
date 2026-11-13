@@ -13,8 +13,11 @@
   {% if show_database_diagnostic %}
     <section class="notice" aria-labelledby="database-diagnostic-title">
       <h2 id="database-diagnostic-title">DB状態診断</h2>
-      <p><a href="{{ url_for('ready') }}" target="_blank" rel="noopener">診断結果を開く</a>と、DB接続と必要なテーブル構成を確認できます。</p>
+      <p><a href="{{ url_for('ready') }}" target="_blank" rel="noopener">診断結果を開く</a>と、DB接続と必要なテーブル構成を確認できます。RenderではPostgreSQLのInternal Database URLを同じリージョンのWeb Serviceに設定してください。</p>
       <ul>
+        <li><code>DATABASE_URL_MISSING</code> / <code>DATABASE_URL_INVALID</code>: Web ServiceのEnvironmentに正しいDATABASE_URLを設定してください。</li>
+        <li><code>DATABASE_AUTH_FAILED</code> / <code>DATABASE_NOT_FOUND</code>: 接続情報とDB名を確認してください。</li>
+        <li><code>DATABASE_HOST_NOT_FOUND</code> / <code>DATABASE_CONNECTION_REFUSED</code> / <code>DATABASE_TIMEOUT</code>: DBの起動状態、接続先、リージョンを確認してください。</li>
         <li><code>DATABASE_UNREACHABLE</code>: DBの起動状態と接続設定を確認してください。</li>
         <li><code>SCHEMA_OUTDATED</code>: デプロイログとDBマイグレーションを確認してください。</li>
         <li><code>status: ok</code>: DBは応答しています。登録処理の権限やDB制約を管理者に確認してください。</li>

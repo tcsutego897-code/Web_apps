@@ -14,9 +14,7 @@ class Settings(BaseSettings):
     app_name: str = "Akashic Record"
     environment: str = "development"
     session_secret_key: str = ""
-    database_url: str = (
-        "postgresql+psycopg://postgres:postgres@127.0.0.1:5432/akashic_record"
-    )
+    database_url: str = ""
     max_upload_size_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
     max_workbook_uncompressed_bytes: int = Field(
         default=50 * 1024 * 1024,

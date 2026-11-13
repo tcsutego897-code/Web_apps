@@ -46,7 +46,7 @@ FastAPIで作る、Excelデータ検索・閲覧アプリです。フェーズ1�
 
 1. 変更をGitHubへpushし、Renderで **New > Blueprint** からこのリポジトリを選択します。
 2. 表示されるWebサービスとPostgreSQLのプラン・リージョン・料金を確認してBlueprintを適用します。`SESSION_SECRET_KEY` は自動生成し、`DATABASE_URL` はDBサービスの接続文字列を使います。
-3. デプロイログで `python -m alembic upgrade head` の成功を確認します。マイグレーションが成功した後にWebサーバーが起動し、`/health/ready` がDB接続を検査します。
+3. デプロイログで `python -m alembic upgrade head` の成功を確認します。マイグレーションが成功した後にWebサーバーが起動し、`/health/ready` がDB接続と必要なスキーマを検査します。`DATABASE_URL` が未設定の場合はローカル接続先へフォールバックせず、起動時に `DATABASE_URL_MISSING` で停止します。起動後にDB接続が切れた場合は `/health/ready` が原因コードと対処案を返します。
 4. RenderのサービスShellで、管理者アカウントを作成します。パスワードは対話入力してください。
 
    ```text
@@ -54,7 +54,15 @@ FastAPIで作る、Excelデータ検索・閲覧アプリです。フェーズ1�
    python -m app.cli create-user --email importer@example.com --role importer
    ```
 
-5. デプロイ後、`/login`、Excel取り込み、検索、レコード詳細、`/health/ready` を確認します。ログはRenderのサービス画面から確認できます。
+5. デプロイ後、`/register`、Excel取り込み、検索、レコード詳細、`/health/ready` を確認します。`/health/ready` が503の場合はJSONの`diagnostic`と`action`に従い、RenderのWeb Service > Environmentで`DATABASE_URL`がDBのInternal Database URLを参照しているか、DBが起動中か、Web ServiceとDBが同一リージョンか確認してください。接続URLには秘密情報が含まれるため共有しないでください。
+
+よくある診断コード:
+
+- `DATABASE_URL_MISSING` / `DATABASE_URL_INVALID`: Web Serviceの環境変数を設定し直し、Render PostgreSQLからInternal Database URLを参照します。
+- `DATABASE_AUTH_FAILED` / `DATABASE_NOT_FOUND`: URLが対象DBの最新の接続情報とDB名を指しているか確認します。
+- `DATABASE_HOST_NOT_FOUND` / `DATABASE_CONNECTION_REFUSED` / `DATABASE_TIMEOUT`: DBの稼働状態、ホスト名、リージョンを確認します。
+- `DATABASE_TLS_ERROR` / `DATABASE_PERMISSION_DENIED`: DBが提供する接続方式とDBユーザー権限を確認します。
+- `SCHEMA_OUTDATED`: デプロイログでAlembicマイグレーションの成功を確認し、必要なら修正を再デプロイします。
 
 ### DBバックアップと復旧
 
@@ -74,11 +82,11 @@ FastAPIで作る、Excelデータ検索・閲覧アプリです。フェーズ1�
 - `/login` — 登録済み利用者のログイン
 - `/logout` — CSRF確認付きのログアウト（POST）
 - `/health/live` — アプリの起動確認（DB接続不要）
-- `/health/ready` — PostgreSQL接続確認。接続できない場合は `503` を返します。
+- `/health/ready` — DB接続・スキーマ確認。障害時は秘密情報を含めず診断コードと対処案を返し、接続できない場合は `503` を返します。
 
-未ログイン利用者はデータ画面へ入れません。`viewer` は閲覧のみ、`importer` は閲覧とExcel取り込みができます。アカウントの公開登録はなく、下記CLIから管理者が発行します。データセットは現行設計では認証済み利用者間で共有します。レコード詳細ではレコードIDだけでなくデータセットIDとの組み合わせも検証します。
+未ログイン利用者はデータ画面へ入れません。新規登録者と`importer`は自分のデータの閲覧・Excel取り込みができ、`viewer`は割り当てられたデータの閲覧のみ可能です。アカウントは`/register`または下記CLIから作成できます。データセットはアカウントごとに分離され、レコード詳細ではレコードIDだけでなく所有者・データセットIDとの組み合わせも検証します。
 
-パスワードはソルト付きPBKDF2-HMAC-SHA256でハッシュ化し、平文では保存しません。セッションCookieは署名付き・HttpOnly・SameSite=Laxで、有効期間は8時間です。本番環境ではSecure属性も有効になります。ログイン・ログアウト・Excel取り込みPOSTにはCSRFトークンを検証します。ログイン失敗の表示はアカウントの有無を区別せず、DB障害の詳細は画面に出しません。
+パスワードはソルト付きPBKDF2-HMAC-SHA256でハッシュ化し、平文では保存しません。セッションCookieは署名付き・HttpOnly・SameSite=Laxで、有効期間は8時間です。本番環境ではSecure属性も有効になります。登録・ログイン・ログアウト・Excel取り込みPOSTにはCSRFトークンを検証します。ログイン失敗の表示はアカウントの有無を区別せず、DB障害の詳細は画面に出しません。
 
 検索条件と結果一覧を分け、詳細画面では項目名と値を対応させて表示します。幅の狭い画面ではメニューと条件フォームを縦に並べ、表は横スクロールできます。Excelのプレビュー・確定フォームには処理中表示と二重送信防止を備えています。
 
@@ -112,7 +120,7 @@ FastAPIで作る、Excelデータ検索・閲覧アプリです。フェーズ1�
 
 `.env.example` の `MAX_UPLOAD_SIZE_BYTES`（初期値10 MiB）、`MAX_WORKBOOK_UNCOMPRESSED_BYTES`（50 MiB）、`MAX_IMPORT_ROWS`（50,000件）は安全のための初期値です。計画書にある通り、実データの見本や本番環境を確認してから必要に応じて調整してください。
 
-本番公開はフェーズ8のRenderデプロイ、HTTPS・秘密鍵・DBバックアップ・運用確認が完了してから行ってください。データセットは共有スコープであり、ユーザー単位の所有・割当管理はまだありません。
+本番公開はフェーズ8のRenderデプロイ、HTTPS・秘密鍵・DBバックアップ・運用確認が完了してから行ってください。データセットはアカウント所有で分離され、既存の所有者未設定データは自動で割り当てず、利用者画面には表示しません。
 
 ## ディレクトリ構成
 

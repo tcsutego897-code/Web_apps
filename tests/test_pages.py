@@ -2,11 +2,13 @@ import asyncio
 from unittest.mock import Mock, patch
 
 import httpx
+import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.database import Base
+from app.config import Settings
+from app.database import Base, DatabaseConfigurationError, get_database_url
 from app.main import app
 from tests.security_helpers import add_user, sign_in
 
@@ -102,6 +104,10 @@ def test_readiness_check_reports_outdated_database_schema() -> None:
         "database": "connected",
         "schema": "outdated",
         "diagnostic": "SCHEMA_OUTDATED",
+        "action": (
+            "デプロイログでAlembicマイグレーションの成功を確認し、"
+            "失敗している場合は原因を修正して再デプロイしてください。"
+        ),
     }
 
 
@@ -116,4 +122,79 @@ def test_readiness_check_reports_database_failure() -> None:
         "status": "unavailable",
         "database": "disconnected",
         "diagnostic": "DATABASE_UNREACHABLE",
+        "action": (
+            "DBサービスの稼働状態とDATABASE_URLを確認してください。"
+            "接続文字列自体は公開しないでください。"
+        ),
     }
+
+
+def test_missing_production_database_url_is_not_replaced_with_localhost(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.database.get_settings",
+        lambda: Settings(environment="production", database_url=""),
+    )
+
+    with pytest.raises(DatabaseConfigurationError) as error:
+        get_database_url()
+
+    assert error.value.diagnostic == "DATABASE_URL_MISSING"
+
+
+def test_production_database_url_must_use_postgresql(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.database.get_settings",
+        lambda: Settings(
+            environment="production",
+            database_url="sqlite+pysqlite:///./local.db",
+        ),
+    )
+
+    with pytest.raises(DatabaseConfigurationError) as error:
+        get_database_url()
+
+    assert error.value.diagnostic == "DATABASE_URL_INVALID"
+
+
+@pytest.mark.parametrize(
+    ("message", "diagnostic"),
+    [
+        ("password authentication failed for user", "DATABASE_AUTH_FAILED"),
+        ("database does not exist", "DATABASE_NOT_FOUND"),
+        ("could not translate host name", "DATABASE_HOST_NOT_FOUND"),
+        ("connection refused", "DATABASE_CONNECTION_REFUSED"),
+        ("connection timed out", "DATABASE_TIMEOUT"),
+        ("SSL certificate verify failed", "DATABASE_TLS_ERROR"),
+    ],
+)
+def test_readiness_classifies_postgresql_connection_failures(
+    message: str,
+    diagnostic: str,
+) -> None:
+    unavailable_engine = Mock()
+    unavailable_engine.connect.side_effect = OperationalError(
+        "SELECT 1",
+        {},
+        OSError(message),
+    )
+    with patch("app.routers.health.get_engine", return_value=unavailable_engine):
+        response = get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json()["diagnostic"] == diagnostic
+    assert response.json()["action"]
+    assert "password" not in response.text.casefold()
+
+
+def test_readiness_reports_missing_database_url_action() -> None:
+    with patch(
+        "app.routers.health.get_engine",
+        side_effect=DatabaseConfigurationError("DATABASE_URL_MISSING"),
+    ):
+        response = get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json()["diagnostic"] == "DATABASE_URL_MISSING"
+    assert "DATABASE_URL" in response.json()["action"]
