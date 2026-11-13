@@ -93,6 +93,29 @@ def add_cached_formula_result(content: bytes, cell_reference: str) -> bytes:
     return output.getvalue()
 
 
+def remove_worksheet_dimension(content: bytes, worksheet_path: str) -> bytes:
+    output = BytesIO()
+    namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+    with ZipFile(BytesIO(content)) as source, ZipFile(
+        output,
+        mode="w",
+        compression=ZIP_DEFLATED,
+    ) as destination:
+        for item in source.infolist():
+            file_content = source.read(item.filename)
+            if item.filename == worksheet_path:
+                root = ElementTree.fromstring(file_content)
+                for dimension in root.findall(f"{namespace}dimension"):
+                    root.remove(dimension)
+                file_content = ElementTree.tostring(
+                    root,
+                    encoding="utf-8",
+                    xml_declaration=True,
+                )
+            destination.writestr(item, file_content)
+    return output.getvalue()
+
+
 def add_archive_member(content: bytes, filename: str, member_content: bytes) -> bytes:
     output = BytesIO()
     with ZipFile(BytesIO(content)) as source, ZipFile(
@@ -224,6 +247,25 @@ def test_preview_supports_a_header_below_the_first_row() -> None:
     assert [field.source_name for field in preview.fields] == ["Code", "Amount"]
     assert preview.sample_rows[0].row_number == 3
     assert preview.sample_rows[0].values == ["0007", 42]
+
+
+def test_preview_recovers_when_worksheet_dimension_is_missing() -> None:
+    content = remove_worksheet_dimension(
+        create_workbook(),
+        "xl/worksheets/sheet1.xml",
+    )
+
+    preview = preview_workbook("people.xlsx", content, "People", 1)
+
+    assert [field.source_name for field in preview.fields] == [
+        "ID",
+        "Name",
+        "Name",
+        "Birthday",
+        "Formula",
+    ]
+    assert preview.record_count == 2
+    assert preview.sample_rows[0].values[1:3] == ["Alice", "A."]
 
 
 def test_preview_reports_merged_cells() -> None:

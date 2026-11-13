@@ -305,6 +305,15 @@ def _read_header_row(sheet: Any, header_row: int, column_count: int) -> list[Any
         raise ImportInputError("Excelの見出し行を読み取れません。") from error
 
 
+def _ensure_worksheet_dimensions(sheet: Any) -> None:
+    if sheet.max_column and sheet.max_row:
+        return
+    try:
+        sheet.calculate_dimension(force=True)
+    except UnboundLocalError:
+        return
+
+
 def _inspect_sheet(
     filename: str,
     content: bytes,
@@ -330,6 +339,8 @@ def _inspect_sheet(
 
         formula_sheet = formula_workbook[selected_sheet]
         value_sheet = value_workbook[selected_sheet]
+        _ensure_worksheet_dimensions(formula_sheet)
+        _ensure_worksheet_dimensions(value_sheet)
         column_count = formula_sheet.max_column or 0
         if column_count < 1:
             raise ImportInputError("シートに見出しがありません。")
