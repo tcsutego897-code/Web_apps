@@ -1,0 +1,47 @@
+Akashic Record 対応履歴
+更新日: 2026-11-13
+
+1. アプリ構成の確認
+- バックエンドは FastAPI。
+- 画面はJinja2テンプレート、データベース操作はSQLAlchemy。
+- Excelのデータ自体はDBに保存されるが、アップロードした.xlsxファイル本体は永続保存しない。
+
+2. 新規登録とアカウント別データ管理
+- メールアドレスとパスワードによる新規登録を追加。登録後はログイン状態となり、自分のExcelを取り込める。
+- データセットと取り込み履歴に所有者を記録し、一覧・検索・詳細画面をアカウントごとに分離。
+- 所有者が不明な既存データは、ユーザーへ自動で割り当てず、利用者画面から非表示にする方針を確認。
+- DBマイグレーションを追加し、旧データを残したまま所有者を未設定にできるようにした。
+
+3. 登録時のDBエラー診断
+- 登録画面に「DB状態診断」への案内を追加。
+- /health/ready でDB接続と必要なスキーマを確認し、接続文字列などの秘密情報を表示せず診断コードと対処案を返すようにした。
+- 本番でDATABASE_URLが未設定の場合、localhostへ暗黙に接続しないように変更。
+
+4. RenderのPostgres接続
+- 診断結果 DATABASE_URL_MISSING は、Web Serviceから見てDATABASE_URLが未設定または空であることを示していた。
+- RenderのWeb ServiceのEnvironmentに、PostgresのInternal Database URLをDATABASE_URLとして設定するよう案内。
+- その後、診断はdatabase: connectedになったが、schema: outdatedとなった。
+
+5. DBマイグレーションの未実行
+- Renderの起動ログに表示されたコマンドはuvicornのみで、アプリ起動前のAlembicマイグレーションが実行されていなかった。
+- RenderのStart Commandに以下を設定するよう案内:
+  python -m alembic upgrade head && exec python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+- 起動ログにalembic upgrade headが含まれ、/health/readyが正常になることを確認する必要がある。
+
+6. Excelの見出し行エラー
+- Excel画像では1行目に「場所」「棚」「資料名」「備考」があり、ユーザーはシート名と見出し行(1)も正しいと確認。
+- 正確なエラーは「シートに見出しがありません。」。
+- 原因は、Excel内部のシート範囲情報が欠けている場合に、読み取り処理が列数を0と誤認すること。
+- 範囲情報がない場合は実際のセルから範囲を再計算する修正を追加。
+- 範囲情報のないExcelを再現する回帰テストを追加。全71件のテストが成功。
+
+7. コミットとプッシュ
+- コミット: 6a740473f80331bdd5d223b23be080716d85f54b
+- メッセージ: Fix Excel preview for missing sheet dimensions
+- origin/akashickへプッシュ済み。
+- Renderへ反映するには、デプロイが完了していることを確認する。
+
+現在の確認事項
+- Renderの最新デプロイでExcelプレビュー修正が反映されているか確認。
+- Renderの起動コマンドでAlembicマイグレーションが毎回実行されるか確認。
+- /health/readyが {"status":"ok","database":"connected"} を返すか確認。
