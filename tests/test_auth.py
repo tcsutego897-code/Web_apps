@@ -13,7 +13,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from app.cli import create_user
-from app.database import Base
+from app.database import Base, DatabaseConfigurationError
 from app.main import app
 from app.models import Dataset, DatasetField, Record, User
 from app.security import hash_password, verify_password
@@ -449,6 +449,41 @@ def test_registration_database_error_links_to_safe_diagnostics(
     assert "DATABASE_UNREACHABLE" in response.text
     assert "Internal Database URL" in response.text
     assert "private database detail" not in response.text
+
+
+def test_missing_database_configuration_does_not_cause_internal_server_error() -> None:
+    async def run() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            follow_redirects=False,
+        ) as client:
+            page = await client.get("/register")
+            token_match = re.search(
+                r'name="csrf_token" value="([^"]+)"',
+                page.text,
+            )
+            assert token_match is not None
+            return await client.post(
+                "/register",
+                data={
+                    "email": "configuration-error@example.test",
+                    "password": TEST_PASSWORD,
+                    "password_confirmation": TEST_PASSWORD,
+                    "csrf_token": token_match.group(1),
+                },
+            )
+
+    with patch(
+        "app.routers.auth.get_engine",
+        side_effect=DatabaseConfigurationError("DATABASE_URL_MISSING"),
+    ):
+        response = asyncio.run(run())
+
+    assert response.status_code == 503
+    assert "DB状態診断をご確認ください" in response.text
+    assert "Internal Server Error" not in response.text
 
 
 def test_importer_can_open_import_page_but_csrf_is_required(

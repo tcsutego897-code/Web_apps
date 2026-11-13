@@ -2,13 +2,13 @@ from functools import lru_cache
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine, make_url
-from sqlalchemy.exc import ArgumentError
+from sqlalchemy.exc import ArgumentError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import get_settings
 
 
-class DatabaseConfigurationError(RuntimeError):
+class DatabaseConfigurationError(SQLAlchemyError):
     def __init__(self, diagnostic: str) -> None:
         super().__init__(diagnostic)
         self.diagnostic = diagnostic
