@@ -335,7 +335,8 @@ def test_preview_and_confirm_import_store_records_and_history(tmp_path: Path) ->
 
     Base.metadata.create_all(engine)
     with Session(engine) as session:
-        add_user(session)
+        owner = add_user(session)
+        owner_id = owner.id
     upload = {
         "upload": (
             "people.xlsx",
@@ -407,6 +408,7 @@ def test_preview_and_confirm_import_store_records_and_history(tmp_path: Path) ->
                 select(Dataset).where(Dataset.name == "People list")
             )
             assert dataset is not None
+            assert dataset.owner_id == owner_id
             assert dataset.record_count == 2
             assert dataset.source_filename == "people.xlsx"
             assert dataset.sheet_name == "People"
@@ -432,7 +434,7 @@ def test_preview_and_confirm_import_store_records_and_history(tmp_path: Path) ->
             }
             assert session.scalar(
                 select(ImportHistory).where(ImportHistory.status == "succeeded")
-            ) is not None
+            ).owner_id == owner_id
             with pytest.raises(UploadError, match="ありません"):
                 read_staged_upload(token)
     finally:
@@ -457,6 +459,9 @@ def test_record_save_failure_rolls_back_dataset_and_records(tmp_path: Path) -> N
             raise SQLAlchemyError("Simulated record save failure")
 
     try:
+        with Session(engine) as session:
+            owner = add_user(session)
+            owner_id = owner.id
         with patch("app.services.excel_import.get_engine", return_value=engine):
             with pytest.raises(SQLAlchemyError, match="Simulated"):
                 import_workbook(
@@ -466,6 +471,7 @@ def test_record_save_failure_rolls_back_dataset_and_records(tmp_path: Path) -> N
                     1,
                     "Must be rolled back",
                     None,
+                    owner_id=owner_id,
                 )
 
         with Session(engine) as session:
@@ -488,6 +494,9 @@ def test_import_validation_failure_is_recorded_and_does_not_create_dataset(
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'failed-import.db'}")
     Base.metadata.create_all(engine)
     try:
+        with Session(engine) as session:
+            owner = add_user(session)
+            owner_id = owner.id
         with patch("app.services.excel_import.get_engine", return_value=engine):
             with pytest.raises(ImportInputError, match="非表示"):
                 import_workbook(
@@ -497,6 +506,7 @@ def test_import_validation_failure_is_recorded_and_does_not_create_dataset(
                     1,
                     "Should not exist",
                     None,
+                    owner_id=owner_id,
                 )
 
         with Session(engine) as session:

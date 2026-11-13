@@ -42,7 +42,7 @@ def test_migrations_apply_and_database_data_survives_reconnecting(
     environment["DATABASE_URL"] = database_url
 
     subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        [sys.executable, "-m", "alembic", "upgrade", "0003_import_row_issues"],
         cwd=PROJECT_ROOT,
         env=environment,
         check=True,
@@ -52,21 +52,55 @@ def test_migrations_apply_and_database_data_survives_reconnecting(
 
     engine = create_engine(database_url)
     with engine.begin() as connection:
-        revision = connection.scalar(text("SELECT version_num FROM alembic_version"))
         connection.execute(
             text(
                 "INSERT INTO users (email, password_hash, role) "
                 "VALUES ('viewer@example.test', 'test-hash', 'viewer')"
             )
         )
+        connection.execute(
+            text(
+                "INSERT INTO datasets "
+                "(name, source_filename, sheet_name, record_count) "
+                "VALUES ('Legacy data', 'legacy.xlsx', 'Sheet1', 1)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO import_histories "
+                "(source_filename, sheet_name, status, success_count, failure_count) "
+                "VALUES ('legacy.xlsx', 'Sheet1', 'succeeded', 1, 0)"
+            )
+        )
     engine.dispose()
+
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=PROJECT_ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
     reopened_engine = create_engine(database_url)
     try:
         with reopened_engine.connect() as connection:
+            revision = connection.scalar(text("SELECT version_num FROM alembic_version"))
             stored_email = connection.scalar(text("SELECT email FROM users"))
+            stored_dataset_owner = connection.scalar(
+                text("SELECT owner_id FROM datasets WHERE name = 'Legacy data'")
+            )
+            stored_history_owner = connection.scalar(
+                text(
+                    "SELECT owner_id FROM import_histories "
+                    "WHERE source_filename = 'legacy.xlsx'"
+                )
+            )
     finally:
         reopened_engine.dispose()
 
-    assert revision == "0003_import_row_issues"
+    assert revision == "0004_account_owned_data"
     assert stored_email == "viewer@example.test"
+    assert stored_dataset_owner is None
+    assert stored_history_owner is None

@@ -562,9 +562,12 @@ def record_failed_preview(
     filename: str,
     sheet_name: str,
     error: ImportInputError,
+    *,
+    owner_id: int,
 ) -> None:
     with Session(get_engine()) as session:
         history = ImportHistory(
+            owner_id=owner_id,
             source_filename=filename,
             sheet_name=sheet_name,
             status="failed",
@@ -591,6 +594,8 @@ def import_workbook(
     header_row: int,
     dataset_name: str,
     display_names: Sequence[str] | None,
+    *,
+    owner_id: int,
 ) -> ImportResult:
     cleaned_dataset_name = dataset_name.strip()
 
@@ -598,6 +603,7 @@ def import_workbook(
     try:
         with Session(engine) as session:
             history = ImportHistory(
+                owner_id=owner_id,
                 source_filename=filename,
                 sheet_name=sheet_name,
                 status="pending",
@@ -615,6 +621,7 @@ def import_workbook(
                 preview = _inspect_sheet(filename, content, sheet_name, header_row)
                 names = _clean_display_names(preview.fields, display_names)
                 dataset = Dataset(
+                    owner_id=owner_id,
                     name=cleaned_dataset_name,
                     source_filename=filename,
                     sheet_name=sheet_name,

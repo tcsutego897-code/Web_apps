@@ -5,7 +5,7 @@
 {% block content %}
   <p class="eyebrow">ACCOUNT</p>
   <h1>ログイン</h1>
-  <p class="lead">登録済みアカウントでサインインします。</p>
+  <p class="lead">アカウントにログインして、保存済みのデータを確認します。</p>
 
   {% if error_message %}
     <div class="notice notice-error" role="alert">{{ error_message }}</div>
@@ -24,6 +24,6 @@
         autocomplete="current-password" required>
       <button class="button button-primary" type="submit">ログイン</button>
     </form>
-    <p class="help-text">アカウントは管理者から発行されたものを使用してください。</p>
+    <p class="help-text">アカウントをお持ちでない方は<a href="{{ url_for('register') }}">新規登録</a>してください。</p>
   </section>
 {% endblock %}

@@ -33,6 +33,7 @@ def test_page_shells_render(tmp_path) -> None:
         "/search": "検索・閲覧",
         "/import": "Excel取り込み",
         "/login": "ログイン",
+        "/register": "新規登録",
     }
 
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'pages.db'}")

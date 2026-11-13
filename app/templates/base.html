@@ -24,6 +24,7 @@
         </form>
       {% else %}
         <a href="{{ url_for('login') }}" {% if request.url.path == "/login" %}aria-current="page"{% endif %}>ログイン</a>
+        <a href="{{ url_for('register') }}" {% if request.url.path == "/register" %}aria-current="page"{% endif %}>新規登録</a>
       {% endif %}
     </nav>
   </header>

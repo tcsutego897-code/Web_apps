@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}新規登録 | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">ACCOUNT</p>
+  <h1>新規登録</h1>
+  <p class="lead">アカウントを作成して、自分専用のExcelデータを管理します。</p>
+
+  {% if error_message %}
+    <div class="notice notice-error" role="alert">{{ error_message }}</div>
+  {% endif %}
+
+  <section class="panel login-panel" aria-labelledby="register-title">
+    <h2 id="register-title">アカウント情報</h2>
+    <form action="{{ url_for('register_submit') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="register-email">メールアドレス</label>
+      <input id="register-email" name="email" type="email" maxlength="320"
+        autocomplete="email" value="{{ email }}" required>
+      <label class="form-label" for="register-password">パスワード</label>
+      <input id="register-password" name="password" type="password" minlength="12"
+        maxlength="1024" autocomplete="new-password" required>
+      <label class="form-label" for="register-password-confirmation">パスワード（確認）</label>
+      <input id="register-password-confirmation" name="password_confirmation"
+        type="password" minlength="12" maxlength="1024"
+        autocomplete="new-password" required>
+      <button class="button button-primary" type="submit">アカウントを作成</button>
+    </form>
+    <p class="help-text">パスワードは12文字以上で設定してください。取り込んだデータは他のアカウントから閲覧できません。</p>
+  </section>
+{% endblock %}

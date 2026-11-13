@@ -93,7 +93,7 @@ async def import_preview_page(
     sheet_name: str = Form(""),
     header_row: str = Form("1"),
 ) -> HTMLResponse:
-    del _user, _csrf_valid
+    del _csrf_valid
     created_stage = False
     content = b""
     visible_sheets: list[str] = []
@@ -138,7 +138,12 @@ async def import_preview_page(
                 visible_sheets[0] if visible_sheets else ""
             )
             try:
-                record_failed_preview(filename, selected_sheet, error)
+                record_failed_preview(
+                    filename,
+                    selected_sheet,
+                    error,
+                    owner_id=_user.id,
+                )
             except SQLAlchemyError:
                 logger.exception("Could not record an Excel row validation error")
                 error_message += " エラー履歴も保存できませんでした。"
@@ -177,7 +182,7 @@ def confirm_import_page(
     dataset_name: str = Form(""),
     display_names: list[str] | None = Form(None),
 ) -> HTMLResponse:
-    del _user, _csrf_valid
+    del _csrf_valid
     content = b""
     try:
         filename = normalize_filename(filename)
@@ -189,6 +194,7 @@ def confirm_import_page(
             header_row=parse_header_row(header_row),
             dataset_name=dataset_name,
             display_names=display_names,
+            owner_id=_user.id,
         )
     except (ImportInputError, UploadError) as error:
         try:

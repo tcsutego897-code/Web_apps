@@ -96,13 +96,14 @@ def format_record_value(value: Any) -> str:
 @router.get("/", response_class=HTMLResponse, name="datasets")
 def datasets_page(
     request: Request,
-    _user: User = Depends(require_authenticated_user),
+    current_user: User = Depends(require_authenticated_user),
 ) -> HTMLResponse:
-    del _user
     try:
         with Session(get_engine()) as session:
             datasets = session.scalars(
-                select(Dataset).order_by(Dataset.imported_at.desc(), Dataset.id.desc())
+                select(Dataset)
+                .where(Dataset.owner_id == current_user.id)
+                .order_by(Dataset.imported_at.desc(), Dataset.id.desc())
             ).all()
     except SQLAlchemyError:
         logger.exception("Could not load the dataset list")
@@ -120,7 +121,7 @@ def datasets_page(
 @router.get("/search", response_class=HTMLResponse, name="search")
 def search_page(
     request: Request,
-    _user: User = Depends(require_authenticated_user),
+    current_user: User = Depends(require_authenticated_user),
     dataset_id: int | None = None,
     field_key: list[str] = Query(default=[]),
     match_mode: list[str] = Query(default=[]),
@@ -130,7 +131,6 @@ def search_page(
     sort_field: str = "",
     sort_direction: str = "asc",
 ) -> HTMLResponse:
-    del _user
     error_message = None
     results = None
     condition_rows = []
@@ -164,6 +164,7 @@ def search_page(
         with Session(get_engine()) as session:
             results = search_records(
                 session,
+                owner_id=current_user.id,
                 dataset_id=dataset_id,
                 requested_conditions=conditions,
                 page=page,
@@ -204,7 +205,9 @@ def search_page(
         try:
             with Session(get_engine()) as session:
                 datasets = session.scalars(
-                    select(Dataset).order_by(Dataset.name, Dataset.id)
+                    select(Dataset)
+                    .where(Dataset.owner_id == current_user.id)
+                    .order_by(Dataset.name, Dataset.id)
                 ).all()
         except SQLAlchemyError:
             logger.exception("Could not load datasets for invalid search request")
@@ -285,12 +288,16 @@ def record_detail_page(
     request: Request,
     dataset_id: int,
     record_id: int,
-    _user: User = Depends(require_authenticated_user),
+    current_user: User = Depends(require_authenticated_user),
 ) -> HTMLResponse:
-    del _user
     try:
         with Session(get_engine()) as session:
-            dataset = session.get(Dataset, dataset_id)
+            dataset = session.scalar(
+                select(Dataset).where(
+                    Dataset.id == dataset_id,
+                    Dataset.owner_id == current_user.id,
+                )
+            )
             record = session.scalar(
                 select(Record).where(
                     Record.id == record_id,

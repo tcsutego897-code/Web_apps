@@ -85,9 +85,14 @@ class Dataset(Base):
             name="ck_datasets_sheet_name_not_empty",
         ),
         CheckConstraint("record_count >= 0", name="ck_datasets_record_count"),
+        Index("ix_datasets_owner_id", "owner_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     source_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     sheet_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -201,6 +206,10 @@ class ImportHistory(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     dataset_id: Mapped[int | None] = mapped_column(
         ForeignKey("datasets.id", ondelete="SET NULL"),
         nullable=True,

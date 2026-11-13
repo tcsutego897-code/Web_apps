@@ -36,7 +36,7 @@ def auth_database(tmp_path: Path) -> Iterator[Engine]:
 
     Base.metadata.create_all(engine)
     with Session(engine) as session:
-        add_user(session)
+        importer = add_user(session)
         add_user(session, email="viewer@example.test", role="viewer")
         session.add(
             User(
@@ -48,6 +48,7 @@ def auth_database(tmp_path: Path) -> Iterator[Engine]:
         )
         session.add(
             Dataset(
+                owner_id=importer.id,
                 name="Shared dataset",
                 source_filename="shared.xlsx",
                 sheet_name="Shared",
@@ -63,6 +64,13 @@ def auth_database(tmp_path: Path) -> Iterator[Engine]:
                 records=[
                     Record(source_row_number=2, data={"field_1": "Visible record"})
                 ],
+            )
+        )
+        session.add(
+            Dataset(
+                name="Legacy dataset",
+                source_filename="legacy.xlsx",
+                sheet_name="Legacy",
             )
         )
         session.commit()
@@ -228,7 +236,7 @@ def test_inactive_accounts_cannot_sign_in(auth_database: Engine) -> None:
     assert "アカウントが無効" not in response.text
 
 
-def test_viewers_can_read_but_cannot_open_import_pages_or_submit_uploads(
+def test_accounts_cannot_read_each_others_datasets_or_import_data(
     auth_database: Engine,
 ) -> None:
     async def run(dataset_id: int) -> tuple[httpx.Response, ...]:
@@ -247,12 +255,21 @@ def test_viewers_can_read_but_cannot_open_import_pages_or_submit_uploads(
                 "/search",
                 params={"dataset_id": dataset_id},
             )
+            detail_page = await client.get(
+                f"/datasets/{dataset_id}/records/1",
+            )
             import_page = await client.get("/import")
             upload_response = await client.post(
                 "/import/preview",
                 data={"csrf_token": match.group(1)},
             )
-            return datasets_page, search_page, import_page, upload_response
+            return (
+                datasets_page,
+                search_page,
+                detail_page,
+                import_page,
+                upload_response,
+            )
 
     with (
         patch("app.security.get_engine", return_value=auth_database),
@@ -263,17 +280,130 @@ def test_viewers_can_read_but_cannot_open_import_pages_or_submit_uploads(
             dataset = session.scalar(select(Dataset))
             assert dataset is not None
             dataset_id = dataset.id
-        datasets_page, search_page, import_page, upload_response = asyncio.run(
-            run(dataset_id)
-        )
+        (
+            datasets_page,
+            search_page,
+            detail_page,
+            import_page,
+            upload_response,
+        ) = asyncio.run(run(dataset_id))
 
     assert datasets_page.status_code == 200
-    assert search_page.status_code == 200
-    assert "Visible record" in search_page.text
+    assert "Shared dataset" not in datasets_page.text
+    assert search_page.status_code == 400
+    assert "Visible record" not in search_page.text
+    assert detail_page.status_code == 404
     assert import_page.status_code == 403
     assert "この操作はできません" in import_page.text
     assert upload_response.status_code == 403
     assert "この操作はできません" in upload_response.text
+
+
+def test_registration_creates_an_importer_and_starts_a_session(
+    auth_database: Engine,
+) -> None:
+    async def run() -> tuple[httpx.Response, httpx.Response, httpx.Response]:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            follow_redirects=False,
+        ) as client:
+            page = await client.get("/register")
+            token_match = re.search(
+                r'name="csrf_token" value="([^"]+)"',
+                page.text,
+            )
+            assert token_match is not None
+            response = await client.post(
+                "/register",
+                data={
+                    "email": "NEW-USER@example.test",
+                    "password": "New-account-password-123",
+                    "password_confirmation": "New-account-password-123",
+                    "csrf_token": token_match.group(1),
+                },
+            )
+            import_page = await client.get("/import")
+            datasets_page = await client.get("/")
+            return response, import_page, datasets_page
+
+    with (
+        patch("app.routers.auth.get_engine", return_value=auth_database),
+        patch("app.security.get_engine", return_value=auth_database),
+        patch("app.routers.pages.get_engine", return_value=auth_database),
+    ):
+        response, import_page, datasets_page = asyncio.run(run())
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/"
+    assert import_page.status_code == 200
+    assert datasets_page.status_code == 200
+    assert "Shared dataset" not in datasets_page.text
+    assert "Legacy dataset" not in datasets_page.text
+    with Session(auth_database) as session:
+        user = session.scalar(
+            select(User).where(User.email == "new-user@example.test")
+        )
+        assert user is not None
+        assert user.role == "importer"
+        assert user.password_hash.startswith("pbkdf2_sha256$")
+        assert user.password_hash != "New-account-password-123"
+
+
+def test_registration_rejects_duplicate_email_and_short_password(
+    auth_database: Engine,
+) -> None:
+    async def run() -> tuple[httpx.Response, httpx.Response, httpx.Response]:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            follow_redirects=False,
+        ) as client:
+            page = await client.get("/register")
+            token_match = re.search(
+                r'name="csrf_token" value="([^"]+)"',
+                page.text,
+            )
+            assert token_match is not None
+            csrf_token = token_match.group(1)
+            missing_csrf = await client.post(
+                "/register",
+                data={
+                    "email": "no-csrf@example.test",
+                    "password": TEST_PASSWORD,
+                    "password_confirmation": TEST_PASSWORD,
+                },
+            )
+            duplicate = await client.post(
+                "/register",
+                data={
+                    "email": TEST_EMAIL.upper(),
+                    "password": TEST_PASSWORD,
+                    "password_confirmation": TEST_PASSWORD,
+                    "csrf_token": csrf_token,
+                },
+            )
+            short_password = await client.post(
+                "/register",
+                data={
+                    "email": "short-password@example.test",
+                    "password": "short",
+                    "password_confirmation": "short",
+                    "csrf_token": csrf_token,
+                },
+            )
+            return missing_csrf, duplicate, short_password
+
+    with patch("app.routers.auth.get_engine", return_value=auth_database):
+        missing_csrf, duplicate, short_password = asyncio.run(run())
+
+    assert missing_csrf.status_code == 403
+    assert duplicate.status_code == 409
+    assert "既に登録されています" in duplicate.text
+    assert short_password.status_code == 400
+    assert "12〜1024文字" in short_password.text
 
 
 def test_importer_can_open_import_page_but_csrf_is_required(

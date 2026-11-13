@@ -58,6 +58,7 @@ def get_field_value_expression(database_type: str, field_key: str):
 def search_records(
     session: Session,
     *,
+    owner_id: int,
     dataset_id: int | None,
     requested_conditions: list[SearchCondition],
     page: int = 1,
@@ -78,7 +79,9 @@ def search_records(
         raise SearchInputError("並べ替え方向が正しくありません。")
 
     datasets = session.scalars(
-        select(Dataset).order_by(Dataset.name, Dataset.id)
+        select(Dataset)
+        .where(Dataset.owner_id == owner_id)
+        .order_by(Dataset.name, Dataset.id)
     ).all()
     selected_dataset = next(
         (dataset for dataset in datasets if dataset.id == dataset_id),

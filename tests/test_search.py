@@ -24,7 +24,7 @@ from tests.security_helpers import add_user, sign_in
 
 
 @pytest.fixture
-def search_database(tmp_path: Path) -> Iterator[tuple[Engine, int]]:
+def search_database(tmp_path: Path) -> Iterator[tuple[Engine, int, int]]:
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'search.db'}")
 
     @event.listens_for(engine, "connect")
@@ -34,8 +34,9 @@ def search_database(tmp_path: Path) -> Iterator[tuple[Engine, int]]:
 
     Base.metadata.create_all(engine)
     with Session(engine) as session:
-        add_user(session)
+        owner = add_user(session)
         people = Dataset(
+            owner_id=owner.id,
             name="People",
             source_filename="people.xlsx",
             sheet_name="People",
@@ -123,6 +124,7 @@ def search_database(tmp_path: Path) -> Iterator[tuple[Engine, int]]:
             ],
         )
         orders = Dataset(
+            owner_id=owner.id,
             name="Orders",
             source_filename="orders.xlsx",
             sheet_name="Orders",
@@ -142,17 +144,19 @@ def search_database(tmp_path: Path) -> Iterator[tuple[Engine, int]]:
         session.add_all([people, orders])
         session.commit()
         people_id = people.id
-    yield engine, people_id
+        owner_id = owner.id
+    yield engine, people_id, owner_id
     engine.dispose()
 
 
 def test_search_matches_exact_partial_and_and_conditions(
-    search_database: tuple[object, int],
+    search_database: tuple[object, int, int],
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, owner_id = search_database
     with Session(engine) as session:
         partial = search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[
                 SearchCondition("field_1", "partial", "ali"),
@@ -164,6 +168,7 @@ def test_search_matches_exact_partial_and_and_conditions(
 
         exact = search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[SearchCondition("field_1", "exact", "Alice")],
         )
@@ -172,12 +177,13 @@ def test_search_matches_exact_partial_and_and_conditions(
 
 
 def test_partial_search_treats_wildcards_and_sql_as_literal_text(
-    search_database: tuple[object, int],
+    search_database: tuple[object, int, int],
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, owner_id = search_database
     with Session(engine) as session:
         results = search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[
                 SearchCondition("field_1", "partial", "100%_done")
@@ -190,6 +196,7 @@ def test_partial_search_treats_wildcards_and_sql_as_literal_text(
     with Session(engine) as session:
         injection_text = search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[
                 SearchCondition("field_1", "partial", "' OR 1=1 --")
@@ -199,17 +206,19 @@ def test_partial_search_treats_wildcards_and_sql_as_literal_text(
 
 
 def test_search_handles_json_numbers_and_booleans(
-    search_database: tuple[object, int],
+    search_database: tuple[object, int, int],
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, owner_id = search_database
     with Session(engine) as session:
         true_results = search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[SearchCondition("field_3", "exact", "true")],
         )
         number_results = search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id + 1,
             requested_conditions=[SearchCondition("field_1", "exact", "125.5")],
         )
@@ -219,12 +228,13 @@ def test_search_handles_json_numbers_and_booleans(
 
 
 def test_search_sorts_and_paginates_with_stable_page_urls(
-    search_database: tuple[object, int],
+    search_database: tuple[object, int, int],
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, owner_id = search_database
     with Session(engine) as session:
         first_page = search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[],
             page=1,
@@ -234,6 +244,7 @@ def test_search_sorts_and_paginates_with_stable_page_urls(
         )
         second_page = search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[],
             page=2,
@@ -261,15 +272,16 @@ def test_search_sorts_and_paginates_with_stable_page_urls(
     ],
 )
 def test_invalid_fields_and_unsearchable_fields_are_rejected(
-    search_database: tuple[Engine, int],
+    search_database: tuple[Engine, int, int],
     field_key: str,
     mode: str,
     value: str,
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, owner_id = search_database
     with Session(engine) as session, pytest.raises(SearchInputError):
         search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[SearchCondition(field_key, mode, value)],
         )
@@ -284,15 +296,16 @@ def test_invalid_fields_and_unsearchable_fields_are_rejected(
     ],
 )
 def test_invalid_pagination_and_sort_parameters_are_rejected(
-    search_database: tuple[Engine, int],
+    search_database: tuple[Engine, int, int],
     page: int,
     page_size: int,
     sort_direction: str,
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, owner_id = search_database
     with Session(engine) as session, pytest.raises(SearchInputError):
         search_records(
             session,
+            owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[],
             page=page,
@@ -317,9 +330,9 @@ def get_search(path: str, parameters: list[tuple[str, str]]) -> httpx.Response:
 
 
 def test_search_page_renders_filters_results_pagination_and_clear_link(
-    search_database: tuple[Engine, int],
+    search_database: tuple[Engine, int, int],
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, _owner_id = search_database
     with (
         patch("app.routers.auth.get_engine", return_value=engine),
         patch("app.security.get_engine", return_value=engine),
@@ -345,9 +358,9 @@ def test_search_page_renders_filters_results_pagination_and_clear_link(
 
 
 def test_search_page_rejects_unregistered_search_key(
-    search_database: tuple[Engine, int],
+    search_database: tuple[Engine, int, int],
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, _owner_id = search_database
     with (
         patch("app.routers.auth.get_engine", return_value=engine),
         patch("app.security.get_engine", return_value=engine),
@@ -368,9 +381,9 @@ def test_search_page_rejects_unregistered_search_key(
 
 
 def test_search_list_shows_representative_fields_and_links_to_details(
-    search_database: tuple[Engine, int],
+    search_database: tuple[Engine, int, int],
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, _owner_id = search_database
     with (
         patch("app.routers.auth.get_engine", return_value=engine),
         patch("app.security.get_engine", return_value=engine),
@@ -390,9 +403,9 @@ def test_search_list_shows_representative_fields_and_links_to_details(
 
 
 def test_record_detail_shows_every_field_and_preserves_search_context(
-    search_database: tuple[Engine, int],
+    search_database: tuple[Engine, int, int],
 ) -> None:
-    engine, dataset_id = search_database
+    engine, dataset_id, _owner_id = search_database
     with Session(engine) as session:
         record = session.scalar(
             select(Record).where(
@@ -437,9 +450,9 @@ def test_record_detail_shows_every_field_and_preserves_search_context(
 
 
 def test_record_detail_cannot_open_record_from_another_dataset(
-    search_database: tuple[Engine, int],
+    search_database: tuple[Engine, int, int],
 ) -> None:
-    engine, people_dataset_id = search_database
+    engine, people_dataset_id, _owner_id = search_database
     with Session(engine) as session:
         order_record = session.scalar(
             select(Record).where(Record.dataset_id != people_dataset_id)
