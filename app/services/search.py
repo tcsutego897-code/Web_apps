@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.models import Dataset, DatasetField, Record
 
-MatchMode = Literal["partial", "exact"]
 SortDirection = Literal["asc", "desc"]
 MAX_SEARCH_CONDITIONS = 10
 DEFAULT_PAGE_SIZE = 25
@@ -20,7 +19,6 @@ class SearchInputError(ValueError):
 @dataclass(frozen=True)
 class SearchCondition:
     field_key: str
-    mode: MatchMode
     value: str
 
 
@@ -119,8 +117,6 @@ def search_records(
             raise SearchInputError("検索対象に、このデータセットにない項目が含まれています。")
         if not fields_by_key[condition.field_key].is_searchable:
             raise SearchInputError("この項目は検索対象に設定されていません。")
-        if condition.mode not in ("partial", "exact"):
-            raise SearchInputError("検索方法が正しくありません。")
         if not condition.value.strip():
             raise SearchInputError("検索語を入力してください。")
         if len(condition.value) > 500:
@@ -135,16 +131,18 @@ def search_records(
             session.bind.dialect.name if session.bind is not None else "",
             condition.field_key,
         )
-        if condition.mode == "exact":
-            query = query.where(field_value == condition.value)
-        else:
-            query = query.where(field_value.icontains(condition.value, autoescape=True))
+        query = query.where(field_value.icontains(condition.value, autoescape=True))
 
     total_count = session.scalar(
         select(func.count()).select_from(query.order_by(None).subquery())
     ) or 0
     total_pages = (total_count + page_size - 1) // page_size
-    current_page = min(page, max(total_pages, 1))
+    max_valid_page = max(total_pages, 1)
+    if page > max_valid_page:
+        raise SearchInputError(
+            f"指定したページはありません。1〜{max_valid_page}ページを指定してください。"
+        )
+    current_page = page
 
     if sort_field:
         sort_expression = get_field_value_expression(

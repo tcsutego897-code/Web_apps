@@ -507,7 +507,7 @@ h3 {
 
 .condition-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(130px, 0.8fr) minmax(180px, 1.5fr) auto;
+  grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.5fr) auto;
   align-items: end;
   gap: 12px;
   padding: 14px;
@@ -542,7 +542,8 @@ h3 {
 
 .search-actions,
 .pagination,
-.pagination-actions {
+.pagination-actions,
+.pagination-jump {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -559,6 +560,16 @@ h3 {
 
 .pagination-actions {
   margin-left: auto;
+}
+
+.pagination-jump input[type="number"] {
+  width: 76px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
 }
 
 .button-small {
@@ -734,6 +745,10 @@ h3 {
   }
 
   .pagination-actions {
+    width: 100%;
+  }
+
+  .pagination-jump {
     width: 100%;
   }
 

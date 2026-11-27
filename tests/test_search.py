@@ -149,7 +149,7 @@ def search_database(tmp_path: Path) -> Iterator[tuple[Engine, int, int]]:
     engine.dispose()
 
 
-def test_search_matches_exact_partial_and_and_conditions(
+def test_search_uses_partial_matching_with_and_conditions(
     search_database: tuple[object, int, int],
 ) -> None:
     engine, dataset_id, owner_id = search_database
@@ -159,21 +159,24 @@ def test_search_matches_exact_partial_and_and_conditions(
             owner_id=owner_id,
             dataset_id=dataset_id,
             requested_conditions=[
-                SearchCondition("field_1", "partial", "ali"),
-                SearchCondition("field_2", "exact", "Osaka"),
+                SearchCondition("field_1", "ali"),
+                SearchCondition("field_2", "Osaka"),
             ],
         )
         assert partial.total_count == 1
         assert partial.records[0].data["field_1"] == "Alicia"
 
-        exact = search_records(
+        substring = search_records(
             session,
             owner_id=owner_id,
             dataset_id=dataset_id,
-            requested_conditions=[SearchCondition("field_1", "exact", "Alice")],
+            requested_conditions=[SearchCondition("field_1", "lic")],
         )
-        assert exact.total_count == 1
-        assert exact.records[0].data["field_1"] == "Alice"
+        assert substring.total_count == 2
+        assert [record.data["field_1"] for record in substring.records] == [
+            "Alice",
+            "Alicia",
+        ]
 
 
 def test_partial_search_treats_wildcards_and_sql_as_literal_text(
@@ -185,9 +188,7 @@ def test_partial_search_treats_wildcards_and_sql_as_literal_text(
             session,
             owner_id=owner_id,
             dataset_id=dataset_id,
-            requested_conditions=[
-                SearchCondition("field_1", "partial", "100%_done")
-            ],
+            requested_conditions=[SearchCondition("field_1", "100%_done")],
         )
 
     assert results.total_count == 1
@@ -198,9 +199,7 @@ def test_partial_search_treats_wildcards_and_sql_as_literal_text(
             session,
             owner_id=owner_id,
             dataset_id=dataset_id,
-            requested_conditions=[
-                SearchCondition("field_1", "partial", "' OR 1=1 --")
-            ],
+            requested_conditions=[SearchCondition("field_1", "' OR 1=1 --")],
         )
     assert injection_text.total_count == 0
 
@@ -214,13 +213,13 @@ def test_search_handles_json_numbers_and_booleans(
             session,
             owner_id=owner_id,
             dataset_id=dataset_id,
-            requested_conditions=[SearchCondition("field_3", "exact", "true")],
+            requested_conditions=[SearchCondition("field_3", "tru")],
         )
         number_results = search_records(
             session,
             owner_id=owner_id,
             dataset_id=dataset_id + 1,
-            requested_conditions=[SearchCondition("field_1", "exact", "125.5")],
+            requested_conditions=[SearchCondition("field_1", "125")],
         )
 
     assert true_results.total_count == 2
@@ -264,17 +263,15 @@ def test_search_sorts_and_paginates_with_stable_page_urls(
 
 
 @pytest.mark.parametrize(
-    ("field_key", "mode", "value"),
+    ("field_key", "value"),
     [
-        ("missing_field", "exact", "x"),
-        ("field_1); DROP TABLE records;--", "exact", "x"),
-        ("field_3", "contains", "true"),
+        ("missing_field", "x"),
+        ("field_1); DROP TABLE records;--", "x"),
     ],
 )
 def test_invalid_fields_and_unsearchable_fields_are_rejected(
     search_database: tuple[Engine, int, int],
     field_key: str,
-    mode: str,
     value: str,
 ) -> None:
     engine, dataset_id, owner_id = search_database
@@ -283,7 +280,7 @@ def test_invalid_fields_and_unsearchable_fields_are_rejected(
             session,
             owner_id=owner_id,
             dataset_id=dataset_id,
-            requested_conditions=[SearchCondition(field_key, mode, value)],
+            requested_conditions=[SearchCondition(field_key, value)],
         )
 
 
@@ -291,6 +288,7 @@ def test_invalid_fields_and_unsearchable_fields_are_rejected(
     ("page", "page_size", "sort_direction"),
     [
         (0, 25, "asc"),
+        (2, 25, "asc"),
         (1, 101, "asc"),
         (1, 25, "sideways"),
     ],
@@ -343,9 +341,9 @@ def test_search_page_renders_filters_results_pagination_and_clear_link(
             [
                 ("dataset_id", str(dataset_id)),
                 ("field_key", "field_1"),
-                ("match_mode", "partial"),
                 ("value", "ali"),
                 ("page_size", "1"),
+                ("match_mode", "exact"),
             ],
         )
 
@@ -353,8 +351,41 @@ def test_search_page_renders_filters_results_pagination_and_clear_link(
     assert "Alice" in response.text
     assert "2 件" in response.text
     assert "次へ" in response.text
+    assert 'name="page"' in response.text
+    assert 'max="2"' in response.text
+    assert "完全一致" not in response.text
+    assert "match_mode" not in response.text
     assert "/search" in response.text
     assert "条件をクリア" in response.text
+
+
+def test_search_page_can_open_a_requested_page_and_keep_search_conditions(
+    search_database: tuple[Engine, int, int],
+) -> None:
+    engine, dataset_id, _owner_id = search_database
+    with (
+        patch("app.routers.auth.get_engine", return_value=engine),
+        patch("app.security.get_engine", return_value=engine),
+        patch("app.routers.pages.get_engine", return_value=engine),
+    ):
+        response = get_search(
+            "/search",
+            [
+                ("dataset_id", str(dataset_id)),
+                ("field_key", "field_1"),
+                ("value", "ali"),
+                ("page_size", "1"),
+                ("page", "2"),
+            ],
+        )
+
+    assert response.status_code == 200
+    assert "Alicia" in response.text
+    assert "2 / 2 ページ" in response.text
+    assert 'name="field_key" value="field_1"' in response.text
+    assert 'name="value" value="ali"' in response.text
+    assert 'name="page"' in response.text
+    assert 'value="2"' in response.text
 
 
 def test_search_page_rejects_unregistered_search_key(
@@ -371,13 +402,52 @@ def test_search_page_rejects_unregistered_search_key(
             [
                 ("dataset_id", str(dataset_id)),
                 ("field_key", "field_1) OR 1=1 --"),
-                ("match_mode", "exact"),
                 ("value", "x"),
             ],
         )
 
     assert response.status_code == 400
     assert "このデータセットにない項目" in response.text
+
+
+def test_search_page_shows_a_clear_error_for_invalid_page_number(
+    search_database: tuple[Engine, int, int],
+) -> None:
+    engine, dataset_id, _owner_id = search_database
+    with (
+        patch("app.routers.auth.get_engine", return_value=engine),
+        patch("app.security.get_engine", return_value=engine),
+        patch("app.routers.pages.get_engine", return_value=engine),
+    ):
+        response = get_search(
+            "/search",
+            [("dataset_id", str(dataset_id)), ("page", "not-a-number")],
+        )
+
+    assert response.status_code == 400
+    assert "ページ番号は整数で指定してください" in response.text
+
+
+def test_search_page_rejects_page_numbers_beyond_the_last_page(
+    search_database: tuple[Engine, int, int],
+) -> None:
+    engine, dataset_id, _owner_id = search_database
+    with (
+        patch("app.routers.auth.get_engine", return_value=engine),
+        patch("app.security.get_engine", return_value=engine),
+        patch("app.routers.pages.get_engine", return_value=engine),
+    ):
+        response = get_search(
+            "/search",
+            [
+                ("dataset_id", str(dataset_id)),
+                ("page_size", "1"),
+                ("page", "4"),
+            ],
+        )
+
+    assert response.status_code == 400
+    assert "1〜3ページを指定してください" in response.text
 
 
 def test_search_list_shows_representative_fields_and_links_to_details(
@@ -396,6 +466,7 @@ def test_search_list_shows_representative_fields_and_links_to_details(
 
     assert response.status_code == 200
     assert "詳細を見る" in response.text
+    assert "元Excel行" in response.text
     assert "検索結果一覧。横にスクロールできます" in response.text
     assert "表は横にスクロールできます。" in response.text
     assert f"/datasets/{dataset_id}/records/" in response.text
@@ -437,6 +508,7 @@ def test_record_detail_shows_every_field_and_preserves_search_context(
         )
 
     assert response.status_code == 200
+    assert "元Excelの2行目" in response.text
     assert "詳細メモ" in response.text
     assert "Only shown in detail" in response.text
     assert "任意項目" in response.text

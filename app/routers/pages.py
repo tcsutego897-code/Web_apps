@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 SEARCH_QUERY_KEYS = {
     "dataset_id",
     "field_key",
-    "match_mode",
     "value",
     "page",
     "page_size",
@@ -124,9 +123,8 @@ def search_page(
     current_user: User = Depends(require_authenticated_user),
     dataset_id: int | None = None,
     field_key: list[str] = Query(default=[]),
-    match_mode: list[str] = Query(default=[]),
     value: list[str] = Query(default=[]),
-    page: int = 1,
+    page: str = "1",
     page_size: int = DEFAULT_PAGE_SIZE,
     sort_field: str = "",
     sort_direction: str = "asc",
@@ -136,19 +134,20 @@ def search_page(
     condition_rows = []
 
     try:
-        if not (len(field_key) == len(match_mode) == len(value)):
-            raise SearchInputError("検索条件の項目・方法・検索語をそろえてください。")
+        try:
+            page_number = int(page)
+        except ValueError as error:
+            raise SearchInputError("ページ番号は整数で指定してください。") from error
+
+        if len(field_key) != len(value):
+            raise SearchInputError("検索条件の項目と検索語をそろえてください。")
         if len(field_key) > MAX_SEARCH_CONDITIONS:
             raise SearchInputError(
                 f"検索条件は{MAX_SEARCH_CONDITIONS}個まで指定できます。"
             )
 
         conditions = []
-        for selected_field, selected_mode, search_value in zip(
-            field_key,
-            match_mode,
-            value,
-        ):
+        for selected_field, search_value in zip(field_key, value):
             if not selected_field and not search_value.strip():
                 continue
             if not selected_field or not search_value.strip():
@@ -156,7 +155,6 @@ def search_page(
             conditions.append(
                 SearchCondition(
                     field_key=selected_field,
-                    mode=selected_mode,
                     value=search_value,
                 )
             )
@@ -167,7 +165,7 @@ def search_page(
                 owner_id=current_user.id,
                 dataset_id=dataset_id,
                 requested_conditions=conditions,
-                page=page,
+                page=page_number,
                 page_size=page_size,
                 sort_field=sort_field,
                 sort_direction=sort_direction,
@@ -178,7 +176,6 @@ def search_page(
             condition_rows = [
                 {
                     "field_key": condition.field_key,
-                    "match_mode": condition.mode,
                     "value": condition.value,
                 }
                 for condition in results.conditions
@@ -234,7 +231,6 @@ def search_page(
             query_parameters.extend(
                 [
                     ("field_key", condition.field_key),
-                    ("match_mode", condition.mode),
                     ("value", condition.value),
                 ]
             )

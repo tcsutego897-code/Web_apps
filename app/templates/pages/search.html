@@ -52,12 +52,6 @@
                     {% endfor %}
                   </select>
                 </label>
-                <label class="form-label">検索方法
-                  <select name="match_mode">
-                    <option value="partial" {% if row.match_mode == "partial" %}selected{% endif %}>部分一致</option>
-                    <option value="exact" {% if row.match_mode == "exact" %}selected{% endif %}>完全一致</option>
-                  </select>
-                </label>
                 <label class="form-label">検索語
                   <input type="text" name="value" value="{{ row.value }}" maxlength="500" placeholder="検索語を入力">
                 </label>
@@ -71,12 +65,6 @@
                     {% for field in results.fields if field.is_searchable %}
                       <option value="{{ field.key }}">{{ field.display_name }}</option>
                     {% endfor %}
-                  </select>
-                </label>
-                <label class="form-label">検索方法
-                  <select name="match_mode">
-                    <option value="partial">部分一致</option>
-                    <option value="exact">完全一致</option>
                   </select>
                 </label>
                 <label class="form-label">検索語
@@ -130,12 +118,6 @@
                 {% for field in results.fields if field.is_searchable %}
                   <option value="{{ field.key }}">{{ field.display_name }}</option>
                 {% endfor %}
-              </select>
-            </label>
-            <label class="form-label">検索方法
-              <select name="match_mode">
-                <option value="partial">部分一致</option>
-                <option value="exact">完全一致</option>
               </select>
             </label>
             <label class="form-label">検索語
@@ -192,7 +174,7 @@
             <table class="preview-table">
               <thead>
                 <tr>
-                  <th scope="col">Excel行</th>
+                  <th scope="col">元Excel行</th>
                   {% for field in display_fields %}
                     <th scope="col">{{ field.display_name }}</th>
                   {% endfor %}
@@ -225,6 +207,28 @@
               {% endif %}
               {% if results.total_pages %}（{{ results.page }} / {{ results.total_pages }} ページ）{% endif %}
             </span>
+            <form class="pagination-jump" action="{{ url_for('search') }}" method="get">
+              <input type="hidden" name="dataset_id" value="{{ results.selected_dataset.id }}">
+              {% for condition in results.conditions %}
+                <input type="hidden" name="field_key" value="{{ condition.field_key }}">
+                <input type="hidden" name="value" value="{{ condition.value }}">
+              {% endfor %}
+              <input type="hidden" name="page_size" value="{{ results.page_size }}">
+              <input type="hidden" name="sort_field" value="{{ results.sort_field }}">
+              <input type="hidden" name="sort_direction" value="{{ results.sort_direction }}">
+              <label for="page-number">ページ</label>
+              <input
+                id="page-number"
+                name="page"
+                type="number"
+                min="1"
+                max="{{ results.total_pages }}"
+                value="{{ results.page }}"
+                required
+              >
+              <span>/ {{ results.total_pages }}</span>
+              <button class="button button-secondary button-small" type="submit">移動</button>
+            </form>
             <div class="pagination-actions">
               {% if previous_page_url %}
                 <a class="button button-secondary button-small" href="{{ previous_page_url }}">前へ</a>
