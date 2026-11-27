@@ -127,6 +127,33 @@ select:focus-visible,
   margin-top: 24px;
 }
 
+.account-section {
+  margin-top: 24px;
+}
+
+.account-form {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.account-form input[type="email"],
+.account-form input[type="password"] {
+  width: min(100%, 520px);
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #cbd4e1;
+  border-radius: 6px;
+  color: #243044;
+  background: #fff;
+  font: inherit;
+}
+
+.account-form input:focus {
+  outline: 3px solid rgb(49 95 159 / 18%);
+  border-color: var(--blue);
+}
+
 .management-form {
   display: grid;
   justify-items: start;
@@ -147,6 +174,38 @@ select:focus-visible,
   color: #243044;
   background: #fff;
   font: inherit;
+}
+
+.admin-inline-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-inline-form select {
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid #cbd4e1;
+  border-radius: 6px;
+  color: #243044;
+  background: #fff;
+  font: inherit;
+}
+
+.admin-inline-form select:focus {
+  outline: 3px solid rgb(49 95 159 / 18%);
+  border-color: var(--blue);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
 .delete-confirmation {

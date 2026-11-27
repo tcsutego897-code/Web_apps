@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}招待の受け取り | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">ACCOUNT INVITATION</p>
+  <h1>アカウントの設定</h1>
+  <section class="panel login-panel" aria-labelledby="invitation-accept-title">
+    <h2 id="invitation-accept-title">招待を受け取る</h2>
+    {% if error_message %}
+      <div class="notice notice-error" role="alert">{{ error_message }}</div>
+    {% endif %}
+    {% if email %}
+      <p>{{ email }} のアカウント用パスワードを設定してください。</p>
+      <form action="{{ url_for('invitation_accept_submit') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="token" value="{{ token }}">
+        <label class="form-label" for="invitation-password">パスワード</label>
+        <input id="invitation-password" name="password" type="password" minlength="12"
+          maxlength="1024" autocomplete="new-password" required>
+        <label class="form-label" for="invitation-password-confirmation">パスワード（確認）</label>
+        <input id="invitation-password-confirmation" name="password_confirmation" type="password"
+          minlength="12" maxlength="1024" autocomplete="new-password" required>
+        <button class="button button-primary" type="submit">パスワードを設定</button>
+      </form>
+      <p class="help-text">リンクは一度だけ使用でき、発行から24時間で失効します。</p>
+    {% endif %}
+  </section>
+{% endblock %}

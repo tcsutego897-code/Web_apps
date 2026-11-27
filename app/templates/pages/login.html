@@ -10,6 +10,9 @@
   {% if error_message %}
     <div class="notice notice-error" role="alert">{{ error_message }}</div>
   {% endif %}
+  {% if success_message %}
+    <div class="notice notice-success" role="status">{{ success_message }}</div>
+  {% endif %}
 
   <section class="panel login-panel" aria-labelledby="login-title">
     <h2 id="login-title">アカウント情報</h2>

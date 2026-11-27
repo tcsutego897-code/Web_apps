@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     environment: str = "development"
     session_secret_key: str = ""
     database_url: str = ""
+    public_base_url: str = ""
+    smtp_host: str = ""
+    smtp_port: int = Field(default=587, gt=0, le=65535)
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_starttls: bool = True
     max_upload_size_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
     max_workbook_uncompressed_bytes: int = Field(
         default=50 * 1024 * 1024,

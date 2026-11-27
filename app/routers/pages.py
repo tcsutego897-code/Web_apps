@@ -18,6 +18,7 @@ from app.security import (
     require_importer,
     verify_csrf_token,
 )
+from app.services.csv_import import CSV_DELIMITERS, CSV_ENCODINGS
 from app.services.search import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
@@ -655,4 +656,9 @@ def import_page(
     _user: User = Depends(require_importer),
 ) -> HTMLResponse:
     del _user
-    return render_page(request, "pages/import.html")
+    return render_page(
+        request,
+        "pages/import.html",
+        csv_encodings=CSV_ENCODINGS,
+        csv_delimiters=CSV_DELIMITERS,
+    )

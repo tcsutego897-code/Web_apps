@@ -15,8 +15,12 @@
       <a href="{{ url_for('search') }}" {% if request.url.path == "/search" %}aria-current="page"{% endif %}>検索・閲覧</a>
       {% if current_user %}
         <a href="{{ url_for('import_history') }}" {% if request.url.path == "/imports/history" %}aria-current="page"{% endif %}>取り込み履歴</a>
+        <a href="{{ url_for('account') }}" {% if request.url.path == "/account" %}aria-current="page"{% endif %}>マイページ</a>
       {% endif %}
-      {% if current_user and current_user.role == "importer" %}
+      {% if current_user and current_user.role == "admin" %}
+        <a href="{{ url_for('admin_users') }}" {% if request.url.path.startswith("/admin/") %}aria-current="page"{% endif %}>会員管理</a>
+      {% endif %}
+      {% if current_user and current_user.role in ("importer", "admin") %}
         <a href="{{ url_for('import_page') }}" {% if request.url.path == "/import" %}aria-current="page"{% endif %}>Excel取り込み</a>
       {% endif %}
       {% if current_user %}

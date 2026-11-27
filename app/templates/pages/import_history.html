@@ -71,7 +71,7 @@
     <section class="panel empty-state">
       <h2>取り込み履歴はありません</h2>
       <p>Excelファイルを取り込むと、ここに結果が表示されます。</p>
-      {% if current_user and current_user.role == "importer" %}
+      {% if current_user and current_user.role in ("importer", "admin") %}
         <a class="button button-primary" href="{{ url_for('import_page') }}">Excelを取り込む</a>
       {% else %}
         <a class="button button-secondary" href="{{ url_for('datasets') }}">データセット一覧へ戻る</a>

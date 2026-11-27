@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Excel取り込み | {{ app_name }}{% endblock %}
+{% block title %}Excel・CSV取り込み | {{ app_name }}{% endblock %}
 
 {% block content %}
   <p class="eyebrow">IMPORT</p>
-  <h1>Excel取り込み</h1>
-  <p class="lead">ファイルを選び、シートと見出しを確認してから取り込みます。</p>
+  <h1>Excel・CSV取り込み</h1>
+  <p class="lead">ExcelまたはCSVを選び、内容を確認してから取り込みます。</p>
   {% if error_message %}
     <div class="notice notice-error" role="alert">{{ error_message }}</div>
   {% endif %}
@@ -21,6 +21,34 @@
       <label class="form-label" for="header-row">見出し行</label>
       <input id="header-row" name="header_row" type="number" min="1" value="1" required>
       <button class="button button-primary" type="submit" data-loading-label="確認中...">シートと内容を確認</button>
+      <p class="form-status" role="status" aria-live="polite" hidden></p>
+    </form>
+  </section>
+
+  <section class="panel import-step">
+    <p class="step-label">CSV</p>
+    <h2>CSVファイルを選択</h2>
+    <p>.csv形式に対応しています。文字コード・区切り文字・見出し行を選んでプレビューできます。空行は取り込みません。</p>
+    <form action="{{ url_for('csv_import_preview') }}" method="post" enctype="multipart/form-data"
+      data-loading-message="CSVファイルを確認しています...">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="csv-upload">CSVファイル</label>
+      <input id="csv-upload" name="upload" type="file" accept=".csv,text/csv" required>
+      <label class="form-label" for="csv-encoding">文字コード</label>
+      <select id="csv-encoding" name="encoding">
+        {% for value, label in csv_encodings.items() %}
+          <option value="{{ value }}" {% if value == "utf-8-sig" %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label class="form-label" for="csv-delimiter">区切り文字</label>
+      <select id="csv-delimiter" name="delimiter">
+        {% for value, label in csv_delimiters.items() %}
+          <option value="{{ value }}" {% if value == "," %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label class="form-label" for="csv-header-row">見出し行</label>
+      <input id="csv-header-row" name="header_row" type="number" min="1" value="1" required>
+      <button class="button button-primary" type="submit" data-loading-label="確認中...">CSVをプレビュー</button>
       <p class="form-status" role="status" aria-live="polite" hidden></p>
     </form>
   </section>

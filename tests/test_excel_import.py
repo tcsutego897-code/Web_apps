@@ -388,7 +388,7 @@ def test_preview_and_confirm_import_store_records_and_history(tmp_path: Path) ->
     }
     try:
         with (
-            patch("app.services.excel_import.get_engine", return_value=engine),
+            patch("app.services.import_common.get_engine", return_value=engine),
             patch("app.routers.auth.get_engine", return_value=engine),
             patch("app.security.get_engine", return_value=engine),
             patch("app.routers.pages.get_engine", return_value=engine),
@@ -504,7 +504,7 @@ def test_record_save_failure_rolls_back_dataset_and_records(tmp_path: Path) -> N
         with Session(engine) as session:
             owner = add_user(session)
             owner_id = owner.id
-        with patch("app.services.excel_import.get_engine", return_value=engine):
+        with patch("app.services.import_common.get_engine", return_value=engine):
             with pytest.raises(SQLAlchemyError, match="Simulated"):
                 import_workbook(
                     "people.xlsx",
@@ -539,7 +539,7 @@ def test_import_validation_failure_is_recorded_and_does_not_create_dataset(
         with Session(engine) as session:
             owner = add_user(session)
             owner_id = owner.id
-        with patch("app.services.excel_import.get_engine", return_value=engine):
+        with patch("app.services.import_common.get_engine", return_value=engine):
             with pytest.raises(ImportInputError, match="非表示"):
                 import_workbook(
                     "people.xlsx",
@@ -570,7 +570,7 @@ def test_preview_row_error_is_saved_to_import_history(tmp_path: Path) -> None:
         add_user(session)
     try:
         with (
-            patch("app.services.excel_import.get_engine", return_value=engine),
+            patch("app.services.import_common.get_engine", return_value=engine),
             patch("app.routers.auth.get_engine", return_value=engine),
             patch("app.security.get_engine", return_value=engine),
             patch(

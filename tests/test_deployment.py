@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import IntegrityError
 
 from app.database import normalize_database_url
 
@@ -85,9 +86,31 @@ def test_migrations_apply_and_database_data_survives_reconnecting(
 
     reopened_engine = create_engine(database_url)
     try:
+        with reopened_engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO users (email, password_hash, role) "
+                    "VALUES ('admin@example.test', 'test-hash', 'admin')"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO user_invitations "
+                    "(email, role, token_hash, expires_at) "
+                    "VALUES ('invitee@example.test', 'viewer', :token_hash, "
+                    "'2099-01-01 00:00:00')"
+                ),
+                {"token_hash": "a" * 64},
+            )
         with reopened_engine.connect() as connection:
             revision = connection.scalar(text("SELECT version_num FROM alembic_version"))
             stored_email = connection.scalar(text("SELECT email FROM users"))
+            stored_admin_role = connection.scalar(
+                text("SELECT role FROM users WHERE email = 'admin@example.test'")
+            )
+            stored_invitation_email = connection.scalar(
+                text("SELECT email FROM user_invitations")
+            )
             stored_dataset_owner = connection.scalar(
                 text("SELECT owner_id FROM datasets WHERE name = 'Legacy data'")
             )
@@ -97,10 +120,20 @@ def test_migrations_apply_and_database_data_survives_reconnecting(
                     "WHERE source_filename = 'legacy.xlsx'"
                 )
             )
+        with pytest.raises(IntegrityError):
+            with reopened_engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "INSERT INTO users (email, password_hash, role) "
+                        "VALUES ('VIEWER@example.test', 'another-hash', 'viewer')"
+                    )
+                )
     finally:
         reopened_engine.dispose()
 
-    assert revision == "0004_account_owned_data"
+    assert revision == "0005_admin_invitations"
     assert stored_email == "viewer@example.test"
+    assert stored_admin_role == "admin"
+    assert stored_invitation_email == "invitee@example.test"
     assert stored_dataset_owner is None
     assert stored_history_owner is None

@@ -50,11 +50,10 @@ FastAPIで作る、Excelデータ検索・閲覧アプリです。フェーズ1�
 4. RenderのサービスShellで、管理者アカウントを作成します。パスワードは対話入力してください。
 
    ```text
-   python -m app.cli create-user --email viewer@example.com --role viewer
-   python -m app.cli create-user --email importer@example.com --role importer
+   python -m app.cli create-admin --email admin@example.com
    ```
 
-5. デプロイ後、`/register`、Excel取り込み、検索、レコード詳細、`/health/ready` を確認します。`/health/ready` が503の場合はJSONの`diagnostic`と`action`に従い、RenderのWeb Service > Environmentで`DATABASE_URL`がDBのInternal Database URLを参照しているか、DBが起動中か、Web ServiceとDBが同一リージョンか確認してください。接続URLには秘密情報が含まれるため共有しないでください。
+5. デプロイ後、`/register`、Excel/CSV取り込み、検索、レコード詳細、`/health/ready` を確認します。`/health/ready` が503の場合はJSONの`diagnostic`と`action`に従い、RenderのWeb Service > Environmentで`DATABASE_URL`がDBのInternal Database URLを参照しているか、DBが起動中か、Web ServiceとDBが同一リージョンか確認してください。接続URLには秘密情報が含まれるため共有しないでください。
 
 よくある診断コード:
 
@@ -78,30 +77,38 @@ FastAPIで作る、Excelデータ検索・閲覧アプリです。フェーズ1�
 - `/` — DBに保存されたデータセット一覧
 - `/datasets/{dataset_id}/manage` — 自分のデータセット名の変更・削除、関連する取り込み履歴の確認
 - `/imports/history` — 自分の取り込み履歴の確認。削除済みデータセットの履歴も表示
+- `/account` — 登録メールアドレスとパスワードの変更、退会
+- `/admin/users` — 管理者向け会員一覧・権限管理・CSV招待
+- `/invitations/accept` — 招待リンクからの初期パスワード設定
 - `/search` — データセットの選択、項目別の部分一致検索、複数条件検索、並べ替え、ページ分割・ページ番号指定、代表項目の一覧
 - `/datasets/{dataset_id}/records/{record_id}` — 検索結果から開くレコード全項目の詳細
-- `/import` — `.xlsx` のシート選択・見出し確認・プレビュー・取り込み
+- `/import` — `.xlsx` のシート選択と、CSVの文字コード・区切り・見出し行を確認したプレビュー・取り込み
 - `/login` — 登録済み利用者のログイン
 - `/logout` — CSRF確認付きのログアウト（POST）
 - `/health/live` — アプリの起動確認（DB接続不要）
 - `/health/ready` — DB接続・スキーマ確認。障害時は秘密情報を含めず診断コードと対処案を返し、接続できない場合は `503` を返します。
 
-未ログイン利用者はデータ画面へ入れません。新規登録者と`importer`は自分のデータの閲覧・Excel取り込みができ、`viewer`は割り当てられたデータの閲覧のみ可能です。アカウントは`/register`または下記CLIから作成できます。データセットはアカウントごとに分離され、レコード詳細ではレコードIDだけでなく所有者・データセットIDとの組み合わせも検証します。データセットの変更・削除も所有者を確認し、削除時は項目とレコードを削除しますが、取り込み履歴は保持します。
+未ログイン利用者はデータ画面へ入れません。新規登録者と`importer`は自分のデータの閲覧・Excel/CSV取り込みができ、`viewer`は割り当てられたデータの閲覧のみ可能です。`admin`は会員管理とExcel/CSV取り込みを利用できます。アカウントは`/register`またはCLIから作成できます。管理者権限は公開登録や管理画面から付与できず、CLIからのみ設定します。管理者画面ではviewer/importerの権限と有効状態を管理できます。データセットはアカウントごとに分離され、レコード詳細ではレコードIDだけでなく所有者・データセットIDとの組み合わせも検証します。データセットの変更・削除も所有者を確認し、削除時は項目とレコードを削除しますが、取り込み履歴は保持します。`/account` では現在のパスワードを確認してメールアドレス・パスワードを変更できます。退会時はアカウントと所有するデータセット・レコード・取り込み履歴・エラー記録を完全に削除し、復元できません。メールによるパスワード再設定は、メール送信方式を設定するまで利用できません。
 
-パスワードはソルト付きPBKDF2-HMAC-SHA256でハッシュ化し、平文では保存しません。セッションCookieは署名付き・HttpOnly・SameSite=Laxで、有効期間は8時間です。本番環境ではSecure属性も有効になります。登録・ログイン・ログアウト・Excel取り込み・データセット変更／削除POSTにはCSRFトークンを検証します。ログイン失敗の表示はアカウントの有無を区別せず、DB障害の詳細は画面に出しません。
+パスワードはソルト付きPBKDF2-HMAC-SHA256でハッシュ化し、平文では保存しません。セッションCookieは署名付き・HttpOnly・SameSite=Laxで、有効期間は8時間です。本番環境ではSecure属性も有効になります。登録・ログイン・ログアウト・Excel/CSV取り込み・データセット変更／削除・アカウント情報変更／退会POSTにはCSRFトークンを検証します。ログイン失敗の表示はアカウントの有無を区別せず、DB障害の詳細は画面に出しません。
 
-検索条件と結果一覧を分け、詳細画面では項目名と値を対応させて表示します。幅の狭い画面ではメニューと条件フォームを縦に並べ、表は横スクロールできます。Excelのプレビュー・確定フォームには処理中表示と二重送信防止を備えています。
+検索条件と結果一覧を分け、詳細画面では項目名と値を対応させて表示します。幅の狭い画面ではメニューと条件フォームを縦に並べ、表は横スクロールできます。Excel/CSVのプレビュー・確定フォームには処理中表示と二重送信防止を備えています。
 
 ### アカウント発行と本番設定
 
-1. DBマイグレーション適用後、閲覧者または取り込み担当者を作成します。パスワードは端末上で対話入力し、コマンド履歴や環境変数には保存しません。
+1. DBマイグレーション適用後、最初の管理者を作成します。パスワードは端末上で対話入力し、コマンド履歴や環境変数には保存しません。
 
    ```powershell
-   python -m app.cli create-user --email viewer@example.com --role viewer
-   python -m app.cli create-user --email importer@example.com --role importer
+   python -m app.cli create-admin --email admin@example.com
    ```
 
-2. `ENVIRONMENT=production` で起動する場合、`.env` またはデプロイ環境に32文字以上のランダムな `SESSION_SECRET_KEY` を設定してください。空や短い鍵ではアプリを起動しません。鍵はGitへ登録せず、秘密管理機能に保存します。
+2. 必要に応じて、管理者が会員を招待します。招待CSVはUTF-8、`email`見出しの1列で、最大100件です。招待リンクは24時間で失効し、一度だけ使用できます。SMTPの認証情報は環境変数またはデプロイ環境の秘密設定に登録します。
+
+   `PUBLIC_BASE_URL`、`SMTP_HOST`、`SMTP_PORT`、`SMTP_USERNAME`、`SMTP_PASSWORD`、`SMTP_FROM_EMAIL`、`SMTP_STARTTLS`を環境変数に設定します。パスワードはデプロイ環境の秘密設定に保存してください。本番の公開URLはHTTPSにし、SMTPはSTARTTLSを有効にします。
+
+   管理者を追加する場合もCLIの `create-admin` を使います。一般会員は`/admin/users`の招待から登録し、直接作成する場合は `python -m app.cli create-user --email viewer@example.com --role viewer` または`--role importer`を使用できます。
+
+3. `ENVIRONMENT=production` で起動する場合、`.env` またはデプロイ環境に32文字以上のランダムな `SESSION_SECRET_KEY` を設定してください。空や短い鍵ではアプリを起動しません。鍵はGitへ登録せず、秘密管理機能に保存します。
 
    ```powershell
    python -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -109,7 +116,7 @@ FastAPIで作る、Excelデータ検索・閲覧アプリです。フェーズ1�
 
 セッション署名鍵を変更すると既存ログインは無効になります。HTTPS終端を経由する本番環境でのみ `ENVIRONMENT=production` を設定し、Secure Cookieが利用できる構成にしてください。
 
-設定は環境変数から読み込みます。`.env` を使う場合は `DATABASE_URL` にSQLAlchemy形式のURLを指定してください（例: `postgresql+psycopg://user:password@host:5432/database`）。`.env` はGitの追跡対象外です。
+設定は環境変数から読み込みます。`.env` を使う場合は `DATABASE_URL` にSQLAlchemy形式のURLを指定してください（例: `postgresql+psycopg://user:password@host:5432/database`）。招待機能には `PUBLIC_BASE_URL`、`SMTP_HOST`、`SMTP_FROM_EMAIL` が必要です。SMTP認証が必要な場合は `SMTP_USERNAME` と `SMTP_PASSWORD` を両方設定し、`SMTP_STARTTLS` は既定で有効です。`.env` はGitの追跡対象外です。
 
 ### Excel取り込み
 
@@ -122,6 +129,14 @@ FastAPIで作る、Excelデータ検索・閲覧アプリです。フェーズ1�
 
 `.env.example` の `MAX_UPLOAD_SIZE_BYTES`（初期値10 MiB）、`MAX_WORKBOOK_UNCOMPRESSED_BYTES`（50 MiB）、`MAX_IMPORT_ROWS`（50,000件）は安全のための初期値です。計画書にある通り、実データの見本や本番環境を確認してから必要に応じて調整してください。
 
+### CSV取り込み
+
+1. `/import` で `.csv` ファイルを選択し、文字コード（UTF-8/BOM対応またはCP932）、区切り文字（カンマ・タブ・セミコロン）、見出し行を指定します。既定値はUTF-8/BOM対応、カンマ、1行目です。
+2. プレビューで元行番号、項目名、先頭5件、空行や重複見出しの警告を確認します。空行は除外し、重複見出しは別々の列として取り込みます。各列の表示名は確定前に変更できます。
+3. 確定するとCSVの値を文字列として保存します。列数の不一致など行単位のエラーは元CSV行とともに履歴に記録し、失敗時は取り込み全体をロールバックします。
+
+CSVファイルはExcelと同じサイズ・件数上限を適用し、プレビューから確定まで一時保管します。成功時に削除し、未確定のファイルも30分で期限切れになります。元ファイルは永続保存しません。実際に運用するCSV見本が未提供のため、本番利用前に実データで文字コードや区切り文字を確認してください。
+
 本番公開はフェーズ8のRenderデプロイ、HTTPS・秘密鍵・DBバックアップ・運用確認が完了してから行ってください。データセットはアカウント所有で分離され、既存の所有者未設定データは自動で割り当てず、利用者画面には表示しません。
 
 ## ディレクトリ構成
@@ -132,13 +147,13 @@ app/
   database.py     SQLAlchemyの接続とモデル基底
   models.py       データセット、項目、レコード、履歴、ユーザー
   security.py     パスワードハッシュ、セッション利用者、ロール、CSRF検証
-  services/       Excel取り込み・一時ファイル管理、データ検索
+  services/       Excel/CSV取り込み・一時ファイル管理、データ検索
   main.py         FastAPIアプリの組み立て
-  routers/        認証、ページ、Excel取り込み、ヘルスチェックのルート
+  routers/        認証、ページ、Excel/CSV取り込み、ヘルスチェックのルート
   templates/      共通レイアウトと各画面
   static/         共通スタイル
 migrations/       Alembicの設定とバージョン管理（行単位エラー履歴を含む）
-tests/            認証・権限、画面、DBモデル、Excel取り込み、データ検索の動作確認
+tests/            認証・権限、画面、DBモデル、Excel/CSV取り込み、データ検索の動作確認
 ```
 
 `python -m alembic upgrade head` で最新スキーマを適用します。レコードの可変列はPostgreSQLでJSONBとして保存し、項目名や表示順は項目テーブルで管理します。利用者のパスワードは平文ではなくハッシュ値のみを保存します。データセットごとに列構成を分けられ、失敗した取り込みもデータセット未作成の状態で履歴に記録できます。

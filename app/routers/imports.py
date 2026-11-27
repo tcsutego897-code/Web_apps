@@ -7,6 +7,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import get_settings
 from app.models import User
 from app.security import get_csrf_token, require_importer, verify_csrf_token
+from app.services.csv_import import (
+    CSV_DELIMITERS,
+    CSV_ENCODINGS,
+    CSVPreview,
+    import_csv,
+    preview_csv,
+)
 from app.services.excel_import import (
     ImportInputError,
     WorkbookPreview,
@@ -17,10 +24,15 @@ from app.services.excel_import import (
 )
 from app.services.upload_storage import (
     UploadError,
+    delete_staged_csv,
     delete_staged_upload,
+    normalize_csv_filename,
     normalize_filename,
+    read_csv_upload,
+    read_staged_csv,
     read_staged_upload,
     read_upload,
+    stage_csv_upload,
     stage_upload,
 )
 from app.web import templates
@@ -79,6 +91,37 @@ def render_preview(
         default_dataset_name=(
             f"{filename.rsplit('.', 1)[0]} - {sheet_name}" if filename else ""
         ),
+    )
+
+
+def render_csv_preview(
+    request: Request,
+    *,
+    filename: str = "",
+    staging_token: str = "",
+    encoding: str = "utf-8-sig",
+    delimiter: str = ",",
+    header_row: str = "1",
+    preview: CSVPreview | None = None,
+    error_message: str | None = None,
+    status_code: int = 200,
+) -> HTMLResponse:
+    return render_import(
+        request,
+        "pages/csv_import_preview.html",
+        status_code=status_code,
+        filename=filename,
+        staging_token=staging_token,
+        encoding=encoding,
+        delimiter=delimiter,
+        header_row=header_row,
+        encoding_options=CSV_ENCODINGS,
+        delimiter_options=CSV_DELIMITERS,
+        preview=preview,
+        error_message=error_message,
+        csrf_token=get_csrf_token(request),
+        current_user=getattr(request.state, "current_user", None),
+        default_dataset_name=filename.rsplit(".", 1)[0] if filename else "",
     )
 
 
@@ -231,6 +274,159 @@ def confirm_import_page(
         )
 
     delete_staged_upload(staging_token)
+    return render_import(
+        request,
+        "pages/import_result.html",
+        result=result,
+    )
+
+
+@router.post(
+    "/import/csv/preview",
+    response_class=HTMLResponse,
+    name="csv_import_preview",
+)
+async def csv_import_preview_page(
+    request: Request,
+    _user: User = Depends(require_importer),
+    _csrf_valid: None = Depends(verify_csrf_token),
+    upload: UploadFile | None = File(None),
+    staging_token: str = Form(""),
+    filename: str = Form(""),
+    encoding: str = Form("utf-8-sig"),
+    delimiter: str = Form(","),
+    header_row: str = Form("1"),
+) -> HTMLResponse:
+    del _csrf_valid
+    content = b""
+    try:
+        if upload is not None and upload.filename:
+            filename, content = await read_csv_upload(upload)
+            staging_token = stage_csv_upload(content)
+        elif staging_token:
+            filename = normalize_csv_filename(filename)
+            content = read_staged_csv(staging_token)
+        else:
+            raise UploadError("CSVファイルを選択してください。")
+
+        preview = preview_csv(
+            filename,
+            content,
+            encoding=encoding,
+            delimiter=delimiter,
+            header_row=parse_header_row(header_row),
+        )
+    except (ImportInputError, UploadError) as error:
+        error_message = str(error)
+        status_code = 400
+        if (
+            isinstance(error, ImportInputError)
+            and error.source_row_number is not None
+            and filename
+        ):
+            try:
+                record_failed_preview(
+                    filename,
+                    "CSV",
+                    error,
+                    owner_id=_user.id,
+                )
+            except SQLAlchemyError:
+                logger.exception("Could not record a CSV row validation error")
+                error_message += " エラー履歴も保存できませんでした。"
+                status_code = 503
+        return render_csv_preview(
+            request,
+            filename=filename,
+            staging_token=staging_token,
+            encoding=encoding,
+            delimiter=delimiter,
+            header_row=header_row,
+            error_message=error_message,
+            status_code=status_code,
+        )
+
+    return render_csv_preview(
+        request,
+        filename=filename,
+        staging_token=staging_token,
+        encoding=encoding,
+        delimiter=delimiter,
+        header_row=str(preview.header_row),
+        preview=preview,
+    )
+
+
+@router.post(
+    "/import/csv/confirm",
+    response_class=HTMLResponse,
+    name="csv_import_confirm",
+)
+def confirm_csv_import_page(
+    request: Request,
+    _user: User = Depends(require_importer),
+    _csrf_valid: None = Depends(verify_csrf_token),
+    staging_token: str = Form(""),
+    filename: str = Form(""),
+    encoding: str = Form("utf-8-sig"),
+    delimiter: str = Form(","),
+    header_row: str = Form("1"),
+    dataset_name: str = Form(""),
+    display_names: list[str] | None = Form(None),
+) -> HTMLResponse:
+    del _csrf_valid
+    content = b""
+    preview: CSVPreview | None = None
+    try:
+        filename = normalize_csv_filename(filename)
+        content = read_staged_csv(staging_token)
+        parsed_header_row = parse_header_row(header_row)
+        preview = preview_csv(
+            filename,
+            content,
+            encoding=encoding,
+            delimiter=delimiter,
+            header_row=parsed_header_row,
+        )
+        result = import_csv(
+            filename,
+            content,
+            encoding=encoding,
+            delimiter=delimiter,
+            header_row=parsed_header_row,
+            dataset_name=dataset_name,
+            display_names=display_names,
+            owner_id=_user.id,
+        )
+    except (ImportInputError, UploadError) as error:
+        if not content:
+            staging_token = ""
+        return render_csv_preview(
+            request,
+            filename=filename,
+            staging_token=staging_token,
+            encoding=encoding,
+            delimiter=delimiter,
+            header_row=header_row,
+            preview=preview,
+            error_message=str(error),
+            status_code=400,
+        )
+    except SQLAlchemyError:
+        logger.exception("Database error while confirming CSV import")
+        return render_csv_preview(
+            request,
+            filename=filename,
+            staging_token=staging_token,
+            encoding=encoding,
+            delimiter=delimiter,
+            header_row=header_row,
+            preview=preview,
+            error_message="データベースに接続できないか、保存に失敗しました。設定と接続状態を確認してください。",
+            status_code=503,
+        )
+
+    delete_staged_csv(staging_token)
     return render_import(
         request,
         "pages/import_result.html",

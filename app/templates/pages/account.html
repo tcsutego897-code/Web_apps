@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}マイページ | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">MY ACCOUNT</p>
+  <h1>マイページ</h1>
+  <p class="lead">登録情報とパスワードを管理します。</p>
+
+  {% if email_updated %}
+    <div class="notice notice-success" role="status">メールアドレスを変更しました。</div>
+  {% endif %}
+  {% if password_updated %}
+    <div class="notice notice-success" role="status">パスワードを変更しました。</div>
+  {% endif %}
+
+  <section class="panel account-section" aria-labelledby="account-info-title">
+    <h2 id="account-info-title">会員情報</h2>
+    <dl class="result-list">
+      <div><dt>登録メールアドレス</dt><dd>{{ current_user.email }}</dd></div>
+      <div><dt>登録日</dt><dd>{{ current_user.created_at.strftime("%Y-%m-%d") }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="panel account-section" aria-labelledby="change-email-title">
+    <h2 id="change-email-title">メールアドレスの変更</h2>
+    {% if email_error %}
+      <div class="notice notice-error" role="alert">{{ email_error }}</div>
+    {% endif %}
+    <form class="account-form" action="{{ url_for('account_change_email') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="new-email">新しいメールアドレス</label>
+      <input id="new-email" name="new_email" type="email" maxlength="320"
+        autocomplete="email" value="{{ email_address }}" required>
+      <label class="form-label" for="email-confirmation">新しいメールアドレス（確認）</label>
+      <input id="email-confirmation" name="email_confirmation" type="email" maxlength="320"
+        autocomplete="email" required>
+      <label class="form-label" for="email-current-password">現在のパスワード</label>
+      <input id="email-current-password" name="current_password" type="password"
+        maxlength="1024" autocomplete="current-password" required>
+      <button class="button button-primary" type="submit">メールアドレスを変更</button>
+    </form>
+  </section>
+
+  <section class="panel account-section" aria-labelledby="change-password-title">
+    <h2 id="change-password-title">パスワードの変更</h2>
+    {% if password_error %}
+      <div class="notice notice-error" role="alert">{{ password_error }}</div>
+    {% endif %}
+    <form class="account-form" action="{{ url_for('account_change_password') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="password-current">現在のパスワード</label>
+      <input id="password-current" name="current_password" type="password"
+        maxlength="1024" autocomplete="current-password" required>
+      <label class="form-label" for="password-new">新しいパスワード</label>
+      <input id="password-new" name="new_password" type="password" minlength="12"
+        maxlength="1024" autocomplete="new-password" required>
+      <label class="form-label" for="password-confirmation">新しいパスワード（確認）</label>
+      <input id="password-confirmation" name="password_confirmation" type="password"
+        minlength="12" maxlength="1024" autocomplete="new-password" required>
+      <button class="button button-primary" type="submit">パスワードを変更</button>
+    </form>
+    <p class="help-text">新しいパスワードは12文字以上で設定してください。</p>
+    <p class="help-text">メールによるパスワード再設定は、メール送信機能を設定するまで利用できません。</p>
+  </section>
+
+  <section class="panel account-section danger-zone" aria-labelledby="delete-account-title">
+    <h2 id="delete-account-title">退会</h2>
+    {% if delete_error %}
+      <div class="notice notice-error" role="alert">{{ delete_error }}</div>
+    {% endif %}
+    <div class="notice notice-warning">
+      退会すると、アカウントに加えて、所有するデータセット・項目・レコード・取り込み履歴とエラー記録をすべて削除します。この操作は元に戻せません。
+    </div>
+    <form class="account-form" action="{{ url_for('account_delete') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="delete-confirmation-email">確認のため、登録メールアドレスを入力</label>
+      <input id="delete-confirmation-email" name="confirmation_email" type="email"
+        maxlength="320" autocomplete="email" required>
+      <label class="form-label" for="delete-current-password">現在のパスワード</label>
+      <input id="delete-current-password" name="current_password" type="password"
+        maxlength="1024" autocomplete="current-password" required>
+      <label class="delete-confirmation">
+        <input type="checkbox" name="confirm_delete" value="yes" required>
+        <span>アカウントと関連データを完全に削除することを確認しました。</span>
+      </label>
+      <button class="button button-danger" type="submit">退会してデータを削除</button>
+    </form>
+  </section>
+{% endblock %}

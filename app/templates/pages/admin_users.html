@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}会員管理 | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">ADMINISTRATION</p>
+  <h1>会員管理</h1>
+  <p class="lead">会員の状態と閲覧・取り込み権限を管理し、招待を送信します。</p>
+
+  {% if error_message %}
+    <div class="notice notice-error" role="alert">{{ error_message }}</div>
+  {% endif %}
+  {% if success_message %}
+    <div class="notice notice-success" role="status">{{ success_message }}</div>
+  {% endif %}
+  {% for message in invitation_errors %}
+    <div class="notice notice-error" role="alert">{{ message }}</div>
+  {% endfor %}
+
+  <section class="panel import-step account-section" aria-labelledby="invitation-title">
+    <h2 id="invitation-title">CSVから会員を招待</h2>
+    <p>UTF-8のCSVを使用し、見出しは <code>email</code> の1列にしてください。1ファイル100件までです。仮パスワードは使わず、招待リンクは24時間で失効します。</p>
+    {% if not smtp_configured %}
+      <div class="notice notice-warning" role="status">
+        招待メールを送るには PUBLIC_BASE_URL、SMTP_HOST、SMTP_FROM_EMAIL の設定が必要です。
+      </div>
+    {% endif %}
+    <form action="{{ url_for('admin_invitation_preview') }}" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="member-csv">会員CSV</label>
+      <input id="member-csv" name="upload" type="file" accept=".csv,text/csv" required>
+      <button class="button button-primary" type="submit">CSVを確認</button>
+    </form>
+
+    {% if preview_rows is not none %}
+      <div class="table-scroll" role="region" aria-label="会員CSVプレビュー。横にスクロールできます" tabindex="0">
+        <table class="preview-table">
+          <thead><tr><th scope="col">行</th><th scope="col">メールアドレス</th><th scope="col">確認結果</th></tr></thead>
+          <tbody>
+            {% for row in preview_rows %}
+              <tr>
+                <th scope="row">{{ row.row_number }}</th>
+                <td>{{ row.email }}</td>
+                <td>{{ row.message }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if csv_token and preview_rows|selectattr("valid", "equalto", false)|list|length == 0 %}
+        <form class="account-form" action="{{ url_for('admin_invitation_send') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="csv_token" value="{{ csv_token }}">
+          <button class="button button-primary" type="submit" {% if not smtp_configured %}disabled{% endif %}>確認した内容で招待メールを送信</button>
+        </form>
+      {% endif %}
+    {% endif %}
+  </section>
+
+  <section class="panel account-section" aria-labelledby="members-title">
+    <h2 id="members-title">登録済み会員</h2>
+    {% if users %}
+      <div class="table-scroll" role="region" aria-label="登録済み会員一覧。横にスクロールできます" tabindex="0">
+        <table class="preview-table">
+          <thead><tr><th scope="col">メールアドレス</th><th scope="col">権限</th><th scope="col">状態</th><th scope="col">操作</th></tr></thead>
+          <tbody>
+            {% for member in users %}
+              <tr>
+                <th scope="row">{{ member.email }}</th>
+                <td>
+                  {% if member.role == "admin" %}
+                    管理者（CLI設定）
+                  {% else %}
+                    <form class="admin-inline-form" action="{{ url_for('admin_change_role', user_id=member.id) }}" method="post">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <label class="visually-hidden" for="role-{{ member.id }}">権限: {{ member.email }}</label>
+                      <select id="role-{{ member.id }}" name="role">
+                        <option value="viewer" {% if member.role == "viewer" %}selected{% endif %}>閲覧</option>
+                        <option value="importer" {% if member.role == "importer" %}selected{% endif %}>取り込み</option>
+                      </select>
+                      <button class="button button-secondary button-small" type="submit">変更</button>
+                    </form>
+                  {% endif %}
+                </td>
+                <td>{{ "有効" if member.is_active else "停止中" }}</td>
+                <td>
+                  {% if member.role != "admin" %}
+                    <form action="{{ url_for('admin_change_active', user_id=member.id) }}" method="post">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <input type="hidden" name="action" value="{{ 'deactivate' if member.is_active else 'activate' }}">
+                      <button class="button button-secondary button-small" type="submit">{{ "停止" if member.is_active else "有効化" }}</button>
+                    </form>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="table-scroll-hint">表は横にスクロールできます。</p>
+    {% else %}
+      <p>会員情報がありません。</p>
+    {% endif %}
+    <p class="help-text">管理者権限の作成・変更はCLIのみで行えます。管理画面から自分の状態は変更できません。</p>
+  </section>
+{% endblock %}

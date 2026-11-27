@@ -60,10 +60,17 @@ def main() -> int:
         choices=("viewer", "importer"),
         required=True,
     )
+    admin_parser = subparsers.add_parser(
+        "create-admin",
+        help="Create an administrator account.",
+    )
+    admin_parser.add_argument("--email", required=True)
     arguments = parser.parse_args()
 
     if not arguments.email.strip() or len(arguments.email) > 320:
         parser.error("email must contain 1 to 320 characters")
+    if arguments.command == "create-admin":
+        return create_user(arguments.email, "admin")
     return create_user(arguments.email, arguments.role)
 
 

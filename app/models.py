@@ -29,7 +29,7 @@ class User(Base):
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint(
-            "role IN ('viewer', 'importer')",
+            "role IN ('viewer', 'importer', 'admin')",
             name="ck_users_role",
         ),
         CheckConstraint("length(email) > 0", name="ck_users_email_not_empty"),
@@ -64,6 +64,38 @@ class User(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    @validates("email")
+    def normalize_email(self, _key: str, email: str) -> str:
+        del _key
+        return email.strip().casefold()
+
+
+class UserInvitation(Base):
+    __tablename__ = "user_invitations"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('viewer', 'importer')",
+            name="ck_user_invitations_role",
+        ),
+        CheckConstraint("length(email) > 0", name="ck_user_invitations_email"),
+        UniqueConstraint("email", name="uq_user_invitations_email"),
+        UniqueConstraint("token_hash", name="uq_user_invitations_token_hash"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
 
     @validates("email")

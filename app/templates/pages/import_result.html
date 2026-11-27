@@ -5,7 +5,7 @@
 {% block content %}
   <p class="eyebrow">IMPORT / COMPLETE</p>
   <h1>取り込みが完了しました</h1>
-  <p class="lead">Excelファイルの内容を新しいデータセットとして保存しました。</p>
+  <p class="lead">{{ result.source_format }}ファイルの内容を新しいデータセットとして保存しました。</p>
   <section class="panel result-panel">
     <span class="status-chip">成功</span>
     <h2>{{ result.dataset_name }}</h2>

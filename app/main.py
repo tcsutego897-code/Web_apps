@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response
 
 from app.config import get_settings
-from app.routers import auth, health, imports, pages
+from app.routers import account, admin, auth, health, imports, pages
 from app.security import get_csrf_token
 from app.web import BASE_DIR, templates
 
@@ -40,6 +40,8 @@ app.mount(
     name="static",
 )
 app.include_router(auth.router)
+app.include_router(account.router)
+app.include_router(admin.router)
 app.include_router(pages.router)
 app.include_router(imports.router)
 app.include_router(health.router)

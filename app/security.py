@@ -141,10 +141,21 @@ def require_authenticated_user(request: Request) -> User:
 def require_importer(
     user: Annotated[User, Depends(require_authenticated_user)],
 ) -> User:
-    if user.role != "importer":
+    if user.role not in {"importer", "admin"}:
         raise HTTPException(
             status_code=403,
             detail="Excelを取り込む権限がありません。",
+        )
+    return user
+
+
+def require_admin(
+    user: Annotated[User, Depends(require_authenticated_user)],
+) -> User:
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="管理者だけが会員管理を利用できます。",
         )
     return user
 

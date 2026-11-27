@@ -35,6 +35,7 @@ def render_login(
     *,
     status_code: int = 200,
     error_message: str | None = None,
+    success_message: str | None = None,
     next_url: str = "/",
 ) -> HTMLResponse:
     return templates.TemplateResponse(
@@ -44,6 +45,7 @@ def render_login(
             "app_name": get_settings().app_name,
             "csrf_token": get_csrf_token(request),
             "error_message": error_message,
+            "success_message": success_message,
             "next_url": safe_redirect_target(next_url),
             "current_user": getattr(request.state, "current_user", None),
         },
@@ -78,8 +80,17 @@ def render_registration(
 def login_page(
     request: Request,
     next_url: str = Query(default="/", alias="next"),
+    account_deleted: bool = False,
 ) -> HTMLResponse:
-    return render_login(request, next_url=next_url)
+    return render_login(
+        request,
+        next_url=next_url,
+        success_message=(
+            "退会処理が完了しました。アカウントと関連データを削除しました。"
+            if account_deleted
+            else None
+        ),
+    )
 
 
 @router.get("/register", response_class=HTMLResponse, name="register")
