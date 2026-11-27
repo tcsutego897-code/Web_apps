@@ -117,6 +117,54 @@ select:focus-visible,
   margin-bottom: 28px;
 }
 
+.page-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.management-section {
+  margin-top: 24px;
+}
+
+.management-form {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.management-form .form-label {
+  display: grid;
+  gap: 6px;
+}
+
+.management-form input[type="text"] {
+  width: min(100%, 480px);
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #cbd4e1;
+  border-radius: 6px;
+  color: #243044;
+  background: #fff;
+  font: inherit;
+}
+
+.delete-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--navy);
+  line-height: 1.5;
+}
+
+.delete-confirmation input {
+  margin-top: 4px;
+}
+
+.danger-zone {
+  border-color: #e7b6ba;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: var(--blue);
@@ -339,6 +387,12 @@ h3 {
   color: #842029;
   border-color: #f1b8be;
   background: #fff2f3;
+}
+
+.notice-success {
+  color: #235d38;
+  border-color: #b7dfc4;
+  background: #f0fff4;
 }
 
 .notice-warning {
@@ -616,6 +670,16 @@ h3 {
   background: #244e86;
 }
 
+.button-danger {
+  color: #fff;
+  border-color: #8d2932;
+  background: #a8323c;
+}
+
+.button-danger:hover {
+  background: #84252e;
+}
+
 .text-link {
   color: var(--blue);
   font-size: 0.92rem;
@@ -696,6 +760,14 @@ h3 {
   .page-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .page-heading-actions {
+    width: 100%;
+  }
+
+  .page-heading-actions .button {
+    flex: 1;
   }
 
   .record-details {

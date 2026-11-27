@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}データセット管理 | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">DATASET MANAGEMENT</p>
+  {% if error_message and not dataset %}
+    <section class="panel error-panel" role="alert">
+      <h1>データセットを管理できません</h1>
+      <p>{{ error_message }}</p>
+      <a class="button button-secondary" href="{{ url_for('datasets') }}">データセット一覧へ戻る</a>
+    </section>
+  {% elif dataset %}
+    <div class="page-heading">
+      <div>
+        <h1>{{ dataset.name }}</h1>
+        <p class="lead">データセットの情報を確認・管理します。</p>
+      </div>
+      <a class="button button-secondary" href="{{ url_for('datasets') }}">一覧へ戻る</a>
+    </div>
+
+    {% if error_message %}
+      <div class="notice notice-error" role="alert">{{ error_message }}</div>
+    {% endif %}
+    {% if success_message %}
+      <div class="notice notice-success" role="status">{{ success_message }}</div>
+    {% endif %}
+
+    <section class="panel management-section" aria-labelledby="dataset-info-title">
+      <h2 id="dataset-info-title">データセット情報</h2>
+      <dl class="result-list">
+        <div><dt>元ファイル</dt><dd>{{ dataset.source_filename }}</dd></div>
+        <div><dt>シート</dt><dd>{{ dataset.sheet_name }}</dd></div>
+        <div><dt>レコード数</dt><dd>{{ dataset.record_count }} 件</dd></div>
+        <div><dt>取り込み日時</dt><dd>{{ dataset.imported_at.strftime("%Y-%m-%d %H:%M") }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel management-section" aria-labelledby="rename-dataset-title">
+      <h2 id="rename-dataset-title">データセット名の変更</h2>
+      <form class="management-form" action="{{ url_for('dataset_rename', dataset_id=dataset.id) }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="form-label" for="dataset-name">新しい名前</label>
+        <input
+          id="dataset-name"
+          name="dataset_name"
+          type="text"
+          maxlength="255"
+          value="{{ submitted_name if submitted_name is not none else dataset.name }}"
+          required
+        >
+        <button class="button button-primary" type="submit">名前を保存</button>
+      </form>
+    </section>
+
+    <section class="panel management-section" aria-labelledby="dataset-history-title">
+      <div class="panel-heading">
+        <h2 id="dataset-history-title">このデータセットの取り込み履歴</h2>
+        <a class="text-link" href="{{ url_for('import_history') }}?dataset_id={{ dataset.id }}">すべて見る</a>
+      </div>
+      {% if history_rows %}
+        <div class="table-scroll" role="region" aria-label="このデータセットの取り込み履歴。横にスクロールできます" tabindex="0">
+          <table class="preview-table">
+            <thead>
+              <tr>
+                <th scope="col">日時</th>
+                <th scope="col">元ファイル</th>
+                <th scope="col">状態</th>
+                <th scope="col">成功件数</th>
+                <th scope="col">失敗件数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in history_rows %}
+                <tr>
+                  <td>{{ row.started_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                  <td>{{ row.source_filename }}</td>
+                  <td>{{ row.status_label }}</td>
+                  <td>{{ row.success_count }}</td>
+                  <td>{{ row.failure_count }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h3>このデータセットの取り込み履歴はありません</h3>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="panel management-section danger-zone" aria-labelledby="delete-dataset-title">
+      <h2 id="delete-dataset-title">データセットの削除</h2>
+      <p>削除すると、このデータセットの項目とレコードも削除されます。取り込み履歴は履歴画面に残り、この操作は元に戻せません。</p>
+      <form class="management-form" action="{{ url_for('dataset_delete', dataset_id=dataset.id) }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="delete-confirmation">
+          <input type="checkbox" name="confirm_delete" value="yes" required>
+          <span>このデータセットとそのレコードを削除することを確認しました。</span>
+        </label>
+        <button class="button button-danger" type="submit">データセットを削除</button>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}

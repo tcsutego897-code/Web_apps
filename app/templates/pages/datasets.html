@@ -9,8 +9,14 @@
       <h1>データセット</h1>
       <p class="lead">取り込んだExcelデータをまとめて管理します。</p>
     </div>
-    <a class="button button-primary" href="{{ url_for('import_page') }}">Excelを取り込む</a>
+    <div class="page-heading-actions">
+      <a class="button button-secondary" href="{{ url_for('import_history') }}">取り込み履歴</a>
+      <a class="button button-primary" href="{{ url_for('import_page') }}">Excelを取り込む</a>
+    </div>
   </div>
+  {% if success_message %}
+    <div class="notice notice-success" role="status">{{ success_message }}</div>
+  {% endif %}
   <section class="panel" aria-labelledby="dataset-list-title">
     <div class="panel-heading">
       <h2 id="dataset-list-title">登録済みデータ</h2>
@@ -28,6 +34,7 @@
               <th scope="col">シート</th>
               <th scope="col">レコード</th>
               <th scope="col">取り込み日時</th>
+              <th scope="col">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -38,6 +45,11 @@
                 <td>{{ dataset.sheet_name }}</td>
                 <td>{{ dataset.record_count }}</td>
                 <td>{{ dataset.imported_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                <td>
+                  <a class="button button-secondary button-small" href="{{ url_for('dataset_manage', dataset_id=dataset.id) }}">
+                    管理
+                  </a>
+                </td>
               </tr>
             {% endfor %}
           </tbody>

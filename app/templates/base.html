@@ -13,6 +13,9 @@
     <nav class="site-nav" aria-label="メインメニュー">
       <a href="{{ url_for('datasets') }}" {% if request.url.path == "/" %}aria-current="page"{% endif %}>データセット</a>
       <a href="{{ url_for('search') }}" {% if request.url.path == "/search" %}aria-current="page"{% endif %}>検索・閲覧</a>
+      {% if current_user %}
+        <a href="{{ url_for('import_history') }}" {% if request.url.path == "/imports/history" %}aria-current="page"{% endif %}>取り込み履歴</a>
+      {% endif %}
       {% if current_user and current_user.role == "importer" %}
         <a href="{{ url_for('import_page') }}" {% if request.url.path == "/import" %}aria-current="page"{% endif %}>Excel取り込み</a>
       {% endif %}

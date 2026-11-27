@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}取り込み履歴 | {{ app_name }}{% endblock %}
+
+{% block content %}
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">IMPORT HISTORY</p>
+      <h1>取り込み履歴</h1>
+      {% if dataset_name %}
+        <p class="lead">{{ dataset_name }} の取り込み履歴</p>
+      {% else %}
+        <p class="lead">自分が行ったExcel取り込みの結果を確認できます。</p>
+      {% endif %}
+    </div>
+    <div class="page-heading-actions">
+      {% if dataset_id %}
+        <a class="button button-secondary" href="{{ url_for('import_history') }}">すべての履歴</a>
+      {% endif %}
+      <a class="button button-secondary" href="{{ url_for('datasets') }}">データセット一覧</a>
+    </div>
+  </div>
+
+  {% if error_message %}
+    <div class="notice notice-error" role="alert">{{ error_message }}</div>
+  {% elif history_rows %}
+    <section class="panel" aria-labelledby="import-history-title">
+      <div class="panel-heading">
+        <h2 id="import-history-title">取り込み記録</h2>
+        <span class="status-chip">{{ history_rows|length }} 件</span>
+      </div>
+      <div class="table-scroll" role="region" aria-label="取り込み履歴。横にスクロールできます" tabindex="0">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th scope="col">日時</th>
+              <th scope="col">データセット</th>
+              <th scope="col">ファイル・シート</th>
+              <th scope="col">状態</th>
+              <th scope="col">成功件数</th>
+              <th scope="col">失敗件数</th>
+              <th scope="col">エラー概要</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in history_rows %}
+              <tr>
+                <td>{{ row.started_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                <td>
+                  {% if row.dataset_id %}
+                    <a class="text-link" href="{{ url_for('dataset_manage', dataset_id=row.dataset_id) }}">
+                      {{ row.dataset_name }}
+                    </a>
+                  {% else %}
+                    {{ row.dataset_name }}
+                  {% endif %}
+                </td>
+                <td>{{ row.source_filename }}<br>{{ row.sheet_name }}</td>
+                <td>{{ row.status_label }}</td>
+                <td>{{ row.success_count }}</td>
+                <td>{{ row.failure_count }}</td>
+                <td>{{ row.error_summary or "—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="table-scroll-hint">表は横にスクロールできます。</p>
+    </section>
+  {% else %}
+    <section class="panel empty-state">
+      <h2>取り込み履歴はありません</h2>
+      <p>Excelファイルを取り込むと、ここに結果が表示されます。</p>
+      {% if current_user and current_user.role == "importer" %}
+        <a class="button button-primary" href="{{ url_for('import_page') }}">Excelを取り込む</a>
+      {% else %}
+        <a class="button button-secondary" href="{{ url_for('datasets') }}">データセット一覧へ戻る</a>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}
